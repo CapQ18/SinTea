@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import PostReviewPage from './pages/PostReviewPage';
 import WishlistPage from './pages/WishlistPage';
@@ -46,19 +46,26 @@ const DiscoverPage: React.FC = () => (
   </div>
 );
 
+const AppContent: React.FC = () => {
+  const location = useLocation();
+  return (
+    <div className="w-full min-h-screen bg-cream relative">
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/discover" element={<DiscoverPage />} />
+        <Route path="/post" element={<PostReviewPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+      </Routes>
+      {location.pathname !== '/post' && <BottomNav />}
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="max-w-md mx-auto min-h-screen bg-cream relative">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/discover" element={<DiscoverPage />} />
-          <Route path="/post" element={<PostReviewPage />} />
-          <Route path="/wishlist" element={<WishlistPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-        </Routes>
-        {window.location.pathname !== '/post' && <BottomNav />}
-      </div>
+      <AppContent />
     </Router>
   );
 };
