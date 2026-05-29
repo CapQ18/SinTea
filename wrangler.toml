@@ -1,14 +1,9 @@
 name = "sintea"
 compatibility_date = "2024-05-27"
 
-[observability]
-enabled = false
-head_sampling_rate = 1
-logs = { enabled = true, persist = true, invocation_logs = true }
-traces = { enabled = false, persist = true, head_sampling_rate = 1 }
-
 [site]
 bucket = "./dist"
 
 [build]
 command = "npm run build"
+publish = "dist"
