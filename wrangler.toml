@@ -7,5 +7,8 @@ head_sampling_rate = 1
 logs = { enabled = true, persist = true, invocation_logs = true }
 traces = { enabled = false, persist = true, head_sampling_rate = 1 }
 
-[assets]
-directory = "./dist"
+[site]
+bucket = "./dist"
+
+[build]
+command = "npm run build"
