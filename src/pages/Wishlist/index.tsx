@@ -201,13 +201,30 @@ const Wishlist: React.FC = () => {
             </div>
 
             {!showDrank && undrankCount > 1 && (
-              <button
-                onClick={handleRandom}
-                className="w-full mt-6 py-4 bg-milk-tea rounded-button text-dark-brown font-medium flex items-center justify-center gap-2 active:scale-95 transition-transform"
-              >
-                <span className="text-lg">🤔</span>
-                <span>纠结喝什么？随机选一个！</span>
-              </button>
+              <div className="mt-6 space-y-3">
+                <button
+                  onClick={handleRandom}
+                  className="w-full py-4 bg-milk-tea rounded-button text-dark-brown font-medium flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                >
+                  <span className="text-lg">🤔</span>
+                  <span>纠结喝什么？随机选一个！</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const shareText = `我的 SinTea 想喝清单：${items.filter(i => !i.isDrank).map(i => i.drinkName).join('、')}`;
+                    if (navigator.share) {
+                      navigator.share({ title: 'SinTea 想喝清单', text: shareText });
+                    } else {
+                      navigator.clipboard.writeText(shareText);
+                      alert('清单链接已复制到剪贴板！');
+                    }
+                  }}
+                  className="w-full py-3 bg-white border border-milk-tea rounded-button text-mid-brown font-medium flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                >
+                  <span className="text-lg">📤</span>
+                  <span>分享我的想喝清单</span>
+                </button>
+              </div>
             )}
           </>
         )}

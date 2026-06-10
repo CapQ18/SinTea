@@ -152,6 +152,11 @@ const FeedCard: React.FC<FeedCardProps> = ({
           >
             {item.type === 'recommend' ? '良心推荐' : '避雷预警'}
           </div>
+          {item.type === 'recommend' && item.likes >= 500 && (
+            <span className="px-2 py-1 rounded text-xs font-medium bg-amber-100 text-amber-600">
+              🔥 高赞
+            </span>
+          )}
         </div>
 
         <div className="mt-3">

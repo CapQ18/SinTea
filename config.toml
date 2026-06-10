@@ -1,0 +1,16 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+model_provider = "custom"
+model = "deepseek-v4-pro"
+
+[model_providers.custom]
+name = "qiniu"
+wire_api = "responses"
+requires_openai_auth = false
+base_url = "https://api.qnaigc.com/v1"
+api_key = "sk-a13dc570f64d421fa6c0d7f3ab9555ff"
+
+sandbox_mode = "workspace-write"
+web_search = "disabled"
+approval_policy = "on-request"
+disable_response_storage = true

@@ -106,6 +106,11 @@ const FeedHome: React.FC = () => {
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       <div className="flex-shrink-0 bg-white">
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2">
+          <p className="text-xs text-amber-700 text-center">
+            ✨ 一个不被流量绑架的奶茶社区 · 时间线排序
+          </p>
+        </div>
         <div className="flex border-b border-gray-100">
           {tabs.map((tab) => (
             <button
