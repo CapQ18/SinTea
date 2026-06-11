@@ -35,6 +35,32 @@ const FeedCard: React.FC<FeedCardProps> = ({
     onCardClick?.(item.id);
   };
 
+  const getTagStyle = (type: string) => {
+    switch (type) {
+      case 'recommend':
+        return 'tag-recommend';
+      case 'neutral':
+        return 'tag-neutral';
+      case 'warning':
+        return 'tag-warning';
+      default:
+        return 'tag-neutral';
+    }
+  };
+
+  const getTagText = (type: string) => {
+    switch (type) {
+      case 'recommend':
+        return '良心推荐';
+      case 'neutral':
+        return '中肯客观';
+      case 'warning':
+        return '避雷预警';
+      default:
+        return '中肯客观';
+    }
+  };
+
   const renderImages = () => {
     const imageCount = item.images.length;
 
@@ -52,7 +78,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
           <img
             src={item.images[0]}
             alt="内容图片"
-            className="w-full h-48 object-cover bg-gray-200"
+            className="w-full h-48 object-cover bg-bg-gray"
           />
         </div>
       );
@@ -73,7 +99,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
               <img
                 src={img}
                 alt={`图片${idx + 1}`}
-                className="w-full h-24 object-cover bg-gray-200"
+                className="w-full h-24 object-cover bg-bg-gray"
               />
             </div>
           ))}
@@ -86,7 +112,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
         {item.images.slice(0, 3).map((img: string, idx: number) => (
           <div
             key={idx}
-            className="rounded-lg overflow-hidden cursor-pointer aspect-square"
+            className="rounded-lg overflow-hidden cursor-pointer aspect-square relative"
             onClick={(e) => {
               e.stopPropagation();
               onImageClick?.(item.images, idx);
@@ -95,8 +121,13 @@ const FeedCard: React.FC<FeedCardProps> = ({
             <img
               src={img}
               alt={`图片${idx + 1}`}
-              className="w-full h-full object-cover bg-gray-200"
+              className="w-full h-full object-cover bg-bg-gray"
             />
+            {imageCount > 3 && idx === 2 && (
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-xs">
+                +{imageCount - 3}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -105,13 +136,13 @@ const FeedCard: React.FC<FeedCardProps> = ({
 
   return (
     <div
-      className="bg-white rounded-xl shadow-sm mb-3 overflow-hidden cursor-pointer active:bg-gray-50 transition-colors"
+      className="bg-white rounded-lg mb-3 overflow-hidden cursor-pointer active:bg-gray-50 transition-colors"
       onClick={() => onCardClick?.(item.id)}
     >
       <div className="p-4">
         <div className="flex items-start gap-3">
           <div
-            className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 cursor-pointer"
+            className="w-10 h-10 rounded-full bg-bg-gray overflow-hidden flex-shrink-0 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
               onUserClick?.(item.user.id);
@@ -127,7 +158,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span
-                className="font-medium text-gray-800 cursor-pointer"
+                className="font-medium text-text-primary cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
                   onUserClick?.(item.user.id);
@@ -136,47 +167,48 @@ const FeedCard: React.FC<FeedCardProps> = ({
                 {item.user.name}
               </span>
               {item.user.title && (
-                <span className="text-xs text-gray-400">· {item.user.title}</span>
+                <span className="text-xs text-text-gray">· {item.user.title}</span>
               )}
             </div>
 
-            <div className="mt-2">
-              <span className="text-sm text-gray-600">{item.tag}</span>
+            <div className="mt-1.5">
+              <span className="text-sm text-text-primary font-medium">#{item.tag}</span>
             </div>
           </div>
 
-          <div
-            className={`px-2 py-1 rounded text-xs font-medium text-white ${
-              item.type === 'recommend' ? 'bg-green-400' : 'bg-red-400'
-            }`}
-          >
-            {item.type === 'recommend' ? '良心推荐' : '避雷预警'}
-          </div>
-          {item.type === 'recommend' && item.likes >= 500 && (
-            <span className="px-2 py-1 rounded text-xs font-medium bg-amber-100 text-amber-600">
-              🔥 高赞
-            </span>
-          )}
+          <span className={`tag ${getTagStyle(item.type)}`}>
+            {getTagText(item.type)}
+          </span>
         </div>
 
         <div className="mt-3">
-          <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+          <p className="text-text-secondary text-sm leading-relaxed whitespace-pre-wrap">
             {item.content}
           </p>
         </div>
 
+        {item.location && (
+          <div className="mt-2 flex items-center text-xs text-text-gray">
+            <svg className="w-3.5 h-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span>{item.location}</span>
+          </div>
+        )}
+
         {renderImages()}
 
-        <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+        <div className="mt-3 flex items-center justify-between text-xs text-text-gray">
           <span>{item.date}</span>
 
           <div className="flex items-center gap-4">
             <button
               onClick={handleComment}
-              className="flex items-center gap-1 hover:text-orange-500 transition-colors"
+              className="flex items-center gap-1 hover:text-primary transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
               </svg>
               <span>{formatNumber(item.comments)}</span>
             </button>
@@ -184,7 +216,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
             <button
               onClick={handleLike}
               className={`flex items-center gap-1 transition-colors ${
-                isLiked ? 'text-red-500' : 'hover:text-red-500'
+                isLiked ? 'text-warning' : 'hover:text-warning'
               }`}
             >
               <svg
@@ -193,7 +225,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
               </svg>
               <span>{formatNumber(likes)}</span>
             </button>

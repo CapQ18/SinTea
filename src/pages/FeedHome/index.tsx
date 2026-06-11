@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import FeedCard from '../../components/FeedCard';
 import { feedMockData, FeedItem } from '../../types/feed';
+import { useNavigate } from 'react-router-dom';
 
 type TabType = 'follow' | 'latest' | 'best' | 'nearby';
 
@@ -14,6 +15,7 @@ const FeedHome: React.FC = () => {
   const [viewerIndex, setViewerIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
+  const navigate = useNavigate();
 
   const tabs: { key: TabType; label: string }[] = [
     { key: 'follow', label: '关注' },
@@ -103,28 +105,27 @@ const FeedHome: React.FC = () => {
     setShowImageViewer(true);
   };
 
+  const handleCardClick = (id: number) => {
+    navigate(`/detail/${id}`);
+  };
+
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <div className="h-screen flex flex-col bg-cream">
       <div className="flex-shrink-0 bg-white">
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2">
-          <p className="text-xs text-amber-700 text-center">
-            ✨ 一个不被流量绑架的奶茶社区 · 时间线排序
-          </p>
-        </div>
-        <div className="flex border-b border-gray-100">
+        <div className="flex border-b border-border-light">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
+              className={`flex-1 py-3.5 text-sm font-medium transition-colors relative ${
                 activeTab === tab.key
-                  ? 'text-amber-600'
-                  : 'text-gray-400'
+                  ? 'text-primary'
+                  : 'text-text-gray'
               }`}
             >
               {tab.label}
               {activeTab === tab.key && (
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-amber-500 rounded-full" />
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-primary rounded-full" />
               )}
             </button>
           ))}
@@ -133,15 +134,15 @@ const FeedHome: React.FC = () => {
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-3 py-3"
+        className="flex-1 overflow-y-auto px-4 py-3"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         {isRefreshing && (
-          <div className="flex justify-center py-2 mb-2">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <div className="w-4 h-4 border-2 border-gray-300 border-t-amber-500 rounded-full animate-spin" />
+          <div className="flex justify-center py-3 mb-2">
+            <div className="flex items-center gap-2 text-sm text-text-gray">
+              <div className="w-4 h-4 border-2 border-text-gray border-t-primary rounded-full animate-spin" />
               <span>正在刷新...</span>
             </div>
           </div>
@@ -149,11 +150,11 @@ const FeedHome: React.FC = () => {
 
         {displayedFeeds.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-4xl mb-4">
+            <div className="w-20 h-20 rounded-full bg-bg-gray flex items-center justify-center text-3xl mb-4">
               📭
             </div>
-            <p className="text-gray-500 text-sm">
-              {activeTab === 'follow' ? '还没有关注的人发的评价' : '暂无内容'}
+            <p className="text-text-gray text-sm">
+              {activeTab === 'follow' ? '还没有关注的人' : '暂无内容'}
             </p>
           </div>
         ) : (
@@ -161,7 +162,7 @@ const FeedHome: React.FC = () => {
             <FeedCard
               key={item.id}
               item={item}
-              onCardClick={(id) => console.log('查看详情:', id)}
+              onCardClick={handleCardClick}
               onUserClick={(userId) => console.log('查看用户:', userId)}
               onImageClick={handleImageClick}
             />
@@ -170,12 +171,12 @@ const FeedHome: React.FC = () => {
 
         {isLoadingMore && (
           <div className="flex justify-center py-4">
-            <div className="w-5 h-5 border-2 border-gray-300 border-t-amber-500 rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-text-gray border-t-primary rounded-full animate-spin" />
           </div>
         )}
 
         {!isLoadingMore && displayedFeeds.length > 0 && (
-          <div className="text-center py-4 text-xs text-gray-400">
+          <div className="text-center py-4 text-xs text-text-gray">
             — 已加载全部内容 —
           </div>
         )}
@@ -183,14 +184,16 @@ const FeedHome: React.FC = () => {
 
       {showImageViewer && (
         <div
-          className="fixed inset-0 bg-black z-50 flex items-center justify-center"
+          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
           onClick={() => setShowImageViewer(false)}
         >
           <button
-            className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white text-xl"
+            className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
             onClick={() => setShowImageViewer(false)}
           >
-            ✕
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
           </button>
 
           <div className="w-full h-full flex items-center justify-center p-4">

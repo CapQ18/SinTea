@@ -10,7 +10,7 @@ export interface FeedItem {
   id: number;
   user: FeedUser;
   tag: string;
-  type: 'recommend' | 'warning';
+  type: 'recommend' | 'neutral' | 'warning';
   content: string;
   images: string[];
   date: string;
@@ -30,6 +30,7 @@ export interface Comment {
   };
   content: string;
   date: string;
+  likes?: number;
 }
 
 export const feedMockData: FeedItem[] = [
