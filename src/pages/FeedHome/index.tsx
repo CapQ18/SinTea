@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import FeedCard from '../../components/FeedCard';
 import { feedMockData, FeedItem } from '../../types/feed';
 import { useNavigate } from 'react-router-dom';
-import { getPosts } from '../../services/postService';
+import { getPosts, enrichPostsWithUser } from '../../services/postService';
 
 type TabType = 'follow' | 'latest' | 'best' | 'nearby';
 
@@ -13,7 +13,8 @@ const FeedHome: React.FC = () => {
   
   useEffect(() => {
     const userPosts = getPosts();
-    setFeedList([...userPosts, ...feedMockData]);
+    const enrichedPosts = enrichPostsWithUser([...userPosts, ...feedMockData]);
+    setFeedList(enrichedPosts);
   }, []);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);

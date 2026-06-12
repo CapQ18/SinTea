@@ -19,18 +19,54 @@ const saveUsers = (users: User[]): void => {
 export const initTestUsers = (): void => {
   const users = getUsers();
   if (users.length === 0) {
-    const testUser: User = {
-      id: 'test-user-id',
-      username: 'test',
-      email: 'test@example.com',
-      password: '123456',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test',
-      nickname: '奶茶爱好者',
-      bio: '每天一杯奶茶，快乐一整天！',
-      createdAt: new Date().toISOString(),
-    };
-    saveUsers([testUser]);
+    const testUsers: User[] = [
+      {
+        id: 'test-user-id',
+        username: 'test',
+        email: 'test@example.com',
+        password: '123456',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test',
+        nickname: '奶茶爱好者',
+        bio: '每天一杯奶茶，快乐一整天！',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'user-2',
+        username: 'milktea_fan',
+        email: 'fan@example.com',
+        password: '123456',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=milktea_fan',
+        nickname: '茶控小王',
+        bio: '专业奶茶品鉴师，已喝遍全城！',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'user-3',
+        username: 'sweet_tooth',
+        email: 'sweet@example.com',
+        password: '123456',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sweet_tooth',
+        nickname: '甜品达人',
+        bio: '甜度越高越开心！',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'user-4',
+        username: 'tea_master',
+        email: 'master@example.com',
+        password: '123456',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tea_master',
+        nickname: '茶大师',
+        bio: '只喝原叶茶底的奶茶',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    saveUsers(testUsers);
   }
+};
+
+export const getAllUsers = (): User[] => {
+  return getUsers();
 };
 
 export const register = (formData: RegisterFormData): { success: boolean; message: string; user?: User } => {

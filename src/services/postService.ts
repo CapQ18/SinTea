@@ -1,5 +1,5 @@
 import { FeedItem } from '../types/feed';
-import { getCurrentUser } from './authService';
+import { getCurrentUser, getAllUsers } from './authService';
 
 const POSTS_STORAGE_KEY = 'sintea_posts';
 
@@ -38,6 +38,7 @@ export const createPost = (formData: PostFormData): FeedItem => {
   
   const newPost: FeedItem = {
     id: generateId(),
+    userId: user?.id || '',
     user: {
       id: Number(user?.id || 0),
       avatar: user?.avatar || '',
@@ -83,4 +84,27 @@ export const toggleLike = (postId: number): FeedItem | null => {
 export const getPostById = (postId: number): FeedItem | undefined => {
   const posts = getPosts();
   return posts.find(p => p.id === postId);
+};
+
+export const enrichPostsWithUser = (posts: FeedItem[]): FeedItem[] => {
+  const users = getAllUsers();
+  
+  return posts.map(post => {
+    if (post.userId) {
+      const user = users.find(u => u.id === post.userId);
+      if (user) {
+        return {
+          ...post,
+          user: {
+            id: Number(user.id),
+            avatar: user.avatar,
+            name: user.nickname || user.username,
+            title: '',
+            isFollowing: false,
+          },
+        };
+      }
+    }
+    return post;
+  });
 };

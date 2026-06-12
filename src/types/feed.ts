@@ -8,6 +8,7 @@ export interface FeedUser {
 
 export interface FeedItem {
   id: number;
+  userId?: string;
   user: FeedUser;
   tag: string;
   type: 'recommend' | 'neutral' | 'warning';
