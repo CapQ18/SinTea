@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createPost } from '../../services/postService';
 
 type PostType = 'recommend' | 'neutral' | 'warning';
 
@@ -46,13 +47,23 @@ const FeedPost: React.FC = () => {
     if (!shopName.trim() || !drinkName.trim() || !content.trim()) return;
 
     setIsPosting(true);
+    
+    createPost({
+      shopName: shopName.trim(),
+      drinkName: drinkName.trim(),
+      content: content.trim(),
+      type: postType,
+      images: images,
+      dna: milkTeaDNA,
+    });
+    
     setTimeout(() => {
       setIsPosting(false);
       setShowSuccess(true);
       setTimeout(() => {
         navigate('/');
       }, 1500);
-    }, 1500);
+    }, 500);
   };
 
   const isFormValid = shopName.trim() && drinkName.trim() && content.trim();

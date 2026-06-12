@@ -2,13 +2,19 @@ import React, { useState, useRef, useEffect } from 'react';
 import FeedCard from '../../components/FeedCard';
 import { feedMockData, FeedItem } from '../../types/feed';
 import { useNavigate } from 'react-router-dom';
+import { getPosts } from '../../services/postService';
 
 type TabType = 'follow' | 'latest' | 'best' | 'nearby';
 
 const FeedHome: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('latest');
-  const [feedList] = useState<FeedItem[]>(feedMockData);
+  const [feedList, setFeedList] = useState<FeedItem[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  useEffect(() => {
+    const userPosts = getPosts();
+    setFeedList([...userPosts, ...feedMockData]);
+  }, []);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [viewerImages, setViewerImages] = useState<string[]>([]);
