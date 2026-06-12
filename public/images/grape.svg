@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect x="60" y="50" width="80" height="120" rx="8" ry="8" fill="#8A2BE2"/>
+  <rect x="65" y="55" width="70" height="110" rx="5" ry="5" fill="#9370DB"/>
+  <ellipse cx="100" cy="60" rx="35" ry="8" fill="#4B0082"/>
+  <rect x="70" y="60" width="60" height="25" fill="#F0E68C" opacity="0.8"/>
+  <rect x="70" y="85" width="60" height="55" fill="#9370DB" opacity="0.9"/>
+  <circle cx="80" cy="105" r="6" fill="#6A5ACD"/>
+  <circle cx="95" cy="100" r="5" fill="#7B68EE"/>
+  <circle cx="110" cy="110" r="6" fill="#6A5ACD"/>
+  <circle cx="88" cy="115" r="5" fill="#7B68EE"/>
+  <circle cx="105" cy="118" r="4" fill="#6A5ACD"/>
+  <rect x="60" y="40" width="80" height="15" rx="5" fill="#4B0082"/>
+  <text x="100" y="51" text-anchor="middle" fill="white" font-size="8" font-weight="bold">多肉葡萄</text>
+</svg>
