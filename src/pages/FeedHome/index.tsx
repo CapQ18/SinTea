@@ -10,12 +10,6 @@ const FeedHome: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('latest');
   const [feedList, setFeedList] = useState<FeedItem[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  useEffect(() => {
-    const userPosts = getPosts();
-    const enrichedPosts = enrichPostsWithUser([...userPosts, ...feedMockData]);
-    setFeedList(enrichedPosts);
-  }, []);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [viewerImages, setViewerImages] = useState<string[]>([]);
@@ -23,6 +17,7 @@ const FeedHome: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const navigate = useNavigate();
+  const refreshKey = useRef(0);
 
   const tabs: { key: TabType; label: string }[] = [
     { key: 'follow', label: '关注' },
@@ -30,6 +25,16 @@ const FeedHome: React.FC = () => {
     { key: 'best', label: '精华' },
     { key: 'nearby', label: '附近' },
   ];
+
+  const loadPosts = () => {
+    const userPosts = getPosts();
+    const enrichedPosts = enrichPostsWithUser([...userPosts, ...feedMockData]);
+    setFeedList(enrichedPosts);
+  };
+
+  useEffect(() => {
+    loadPosts();
+  }, [refreshKey.current]);
 
   const filterAndSortFeeds = (feeds: FeedItem[], tab: TabType): FeedItem[] => {
     let result = [...feeds];
@@ -59,6 +64,7 @@ const FeedHome: React.FC = () => {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    refreshKey.current += 1;
     setTimeout(() => {
       setIsRefreshing(false);
     }, 1500);
@@ -147,75 +153,97 @@ const FeedHome: React.FC = () => {
         onTouchEnd={handleTouchEnd}
       >
         {isRefreshing && (
-          <div className="flex justify-center py-3 mb-2">
-            <div className="flex items-center gap-2 text-sm text-text-gray">
-              <div className="w-4 h-4 border-2 border-text-gray border-t-primary rounded-full animate-spin" />
-              <span>正在刷新...</span>
-            </div>
+          <div className="flex justify-center py-4">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
-        {displayedFeeds.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-20 h-20 rounded-full bg-bg-gray flex items-center justify-center text-3xl mb-4">
-              📭
-            </div>
-            <p className="text-text-gray text-sm">
-              {activeTab === 'follow' ? '还没有关注的人' : '暂无内容'}
-            </p>
-          </div>
-        ) : (
-          displayedFeeds.map((item) => (
+        <div className="space-y-3">
+          {displayedFeeds.map((item) => (
             <FeedCard
               key={item.id}
               item={item}
-              onCardClick={handleCardClick}
-              onUserClick={(userId) => console.log('查看用户:', userId)}
               onImageClick={handleImageClick}
+              onCardClick={handleCardClick}
             />
-          ))
-        )}
+          ))}
+        </div>
 
         {isLoadingMore && (
           <div className="flex justify-center py-4">
-            <div className="w-5 h-5 border-2 border-text-gray border-t-primary rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
-        {!isLoadingMore && displayedFeeds.length > 0 && (
-          <div className="text-center py-4 text-xs text-text-gray">
-            — 已加载全部内容 —
+        {!isLoadingMore && displayedFeeds.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-text-gray">
+            <svg className="w-16 h-16 mb-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+              <polyline points="21 15 16 10 5 21" strokeWidth="1.5" />
+            </svg>
+            <p className="text-sm">暂无评价内容</p>
+            <button
+              onClick={() => navigate('/post')}
+              className="mt-3 px-4 py-2 bg-primary text-white text-sm rounded-button"
+            >
+              去发布第一条评价
+            </button>
           </div>
         )}
       </div>
 
       {showImageViewer && (
         <div
-          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
           onClick={() => setShowImageViewer(false)}
         >
           <button
             className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
             onClick={() => setShowImageViewer(false)}
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
-
-          <div className="w-full h-full flex items-center justify-center p-4">
-            <img
-              src={viewerImages[viewerIndex]}
-              alt={`图片 ${viewerIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
-            />
+          <button
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              setViewerIndex((prev) => (prev > 0 ? prev - 1 : viewerImages.length - 1));
+            }}
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <img
+            src={viewerImages[viewerIndex]}
+            alt=""
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              setViewerIndex((prev) => (prev < viewerImages.length - 1 ? prev + 1 : 0));
+            }}
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1">
+            {viewerImages.map((_, index) => (
+              <div
+                key={index}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  index === viewerIndex ? 'bg-white' : 'bg-white/50'
+                }`}
+              />
+            ))}
           </div>
-
-          {viewerImages.length > 1 && (
-            <div className="absolute bottom-8 left-0 right-0 text-center text-white text-sm">
-              {viewerIndex + 1} / {viewerImages.length}
-            </div>
-          )}
         </div>
       )}
     </div>

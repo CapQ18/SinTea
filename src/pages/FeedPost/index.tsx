@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../../services/postService';
 
@@ -23,6 +23,7 @@ const FeedPost: React.FC = () => {
   const [images, setImages] = useState<string[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const [milkTeaDNA, setMilkTeaDNA] = useState<MilkTeaDNA>({
     sweetness: 50,
@@ -33,27 +34,46 @@ const FeedPost: React.FC = () => {
     appearance: 50,
   });
 
-  const handleAddImage = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => setErrorMessage(''), 3000);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [errorMessage]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files && files.length > 0 && images.length < 6) {
-      const file = files[0];
-      if (!file.type.startsWith('image/')) {
-        alert('请选择图片文件');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        setImages(prev => [...prev, result]);
-      };
-      reader.readAsDataURL(file);
+    console.log('文件变化:', files);
+    
+    if (!files || files.length === 0) {
+      console.log('没有选择文件');
+      return;
     }
+    
+    if (images.length >= 6) {
+      setErrorMessage('最多只能上传6张图片');
+      return;
+    }
+
+    const file = files[0];
+    console.log('选择的文件:', file.name, file.type);
+    
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('请选择图片文件');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      console.log('图片读取成功');
+      setImages(prev => [...prev, result]);
+    };
+    reader.onerror = () => {
+      setErrorMessage('图片读取失败');
+    };
+    reader.readAsDataURL(file);
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -64,19 +84,22 @@ const FeedPost: React.FC = () => {
   };
 
   const handlePost = () => {
+    console.log('点击发布按钮');
+    
     if (!shopName.trim()) {
-      alert('请填写奶茶店名');
+      setErrorMessage('请填写奶茶店名');
       return;
     }
     if (!drinkName.trim()) {
-      alert('请填写奶茶名');
+      setErrorMessage('请填写奶茶名');
       return;
     }
     if (!content.trim()) {
-      alert('请填写评价内容');
+      setErrorMessage('请填写评价内容');
       return;
     }
 
+    console.log('开始发布');
     setIsPosting(true);
     
     createPost({
@@ -219,7 +242,7 @@ const FeedPost: React.FC = () => {
           disabled={!isFormValid || isPosting}
           className={`px-4 py-1.5 rounded-button text-sm font-medium transition-all min-w-[60px] ${
             isFormValid && !isPosting
-              ? 'bg-primary text-white'
+              ? 'bg-primary text-white hover:opacity-90'
               : 'bg-bg-gray text-text-gray cursor-not-allowed'
           }`}
         >
@@ -230,11 +253,17 @@ const FeedPost: React.FC = () => {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/jpg,image/gif"
+        accept="image/*"
         onChange={handleFileChange}
         className="hidden"
-        multiple={false}
+        id="image-upload"
       />
+
+      {errorMessage && (
+        <div className="bg-warning/10 text-warning px-4 py-2 text-sm">
+          {errorMessage}
+        </div>
+      )}
 
       {showSuccess ? (
         <div className="flex-1 flex flex-col items-center justify-center">
@@ -249,15 +278,15 @@ const FeedPost: React.FC = () => {
           <div className="p-4">
             <div className="bg-white rounded-lg">
               <div className="p-4">
-                <div
-                  className="w-24 h-24 rounded-lg bg-bg-gray flex items-center justify-center cursor-pointer hover:bg-border transition-colors border-2 border-dashed border-border"
-                  onClick={handleAddImage}
+                <label
+                  htmlFor="image-upload"
+                  className="block w-24 h-24 rounded-lg bg-bg-gray flex items-center justify-center cursor-pointer hover:bg-border transition-colors border-2 border-dashed border-border"
                 >
                   <svg className="w-8 h-8 text-text-gray" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="1.5" />
                     <path d="M12 8v8M8 12h8" strokeWidth="1.5" />
                   </svg>
-                </div>
+                </label>
 
                 {images.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -279,14 +308,14 @@ const FeedPost: React.FC = () => {
                       </div>
                     ))}
                     {images.length < 6 && (
-                      <div
-                        className="w-20 h-20 rounded-lg bg-bg-gray flex items-center justify-center cursor-pointer hover:bg-border transition-colors border-2 border-dashed border-border"
-                        onClick={handleAddImage}
+                      <label
+                        htmlFor="image-upload"
+                        className="block w-20 h-20 rounded-lg bg-bg-gray flex items-center justify-center cursor-pointer hover:bg-border transition-colors border-2 border-dashed border-border"
                       >
                         <svg className="w-6 h-6 text-text-gray" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                           <path d="M12 4v16m8-8H4" strokeWidth="1.5" />
                         </svg>
-                      </div>
+                      </label>
                     )}
                   </div>
                 )}
