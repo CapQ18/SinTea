@@ -1,7 +1,10 @@
 import React from 'react';
-import { mockUserProfile } from '../../mock';
+import { useNavigate } from 'react-router-dom';
+import { getCurrentUser, logout } from '../../services/authService';
 
 const Profile: React.FC = () => {
+  const navigate = useNavigate();
+  const user = getCurrentUser();
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
@@ -10,11 +13,16 @@ const Profile: React.FC = () => {
     return num.toString();
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   const menuItems = [
-    { icon: 'reviews', label: '我的评价', count: mockUserProfile.totalReviews },
-    { icon: 'wishlist', label: '心愿单', count: 12 },
-    { icon: 'history', label: '喝过的', count: mockUserProfile.totalCups },
-    { icon: 'likes', label: '获赞', count: mockUserProfile.totalLikes },
+    { icon: 'reviews', label: '我的评价', count: 12 },
+    { icon: 'wishlist', label: '心愿单', count: 8 },
+    { icon: 'history', label: '喝过的', count: 56 },
+    { icon: 'likes', label: '获赞', count: 328 },
   ];
 
   const settingsItems = [
@@ -22,6 +30,7 @@ const Profile: React.FC = () => {
     { icon: 'invite', label: '邀请好友' },
     { icon: 'feedback', label: '意见反馈' },
     { icon: 'about', label: '关于' },
+    { icon: 'logout', label: '退出登录', isLogout: true },
   ];
 
   const renderIcon = (icon: string) => {
@@ -81,6 +90,13 @@ const Profile: React.FC = () => {
             <path d="M12 16v-4M12 8h.01" />
           </svg>
         );
+      case 'logout':
+        return (
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+            <path d="M16 17l5-5-5-5M19 12H9" />
+          </svg>
+        );
       default:
         return null;
     }
@@ -97,16 +113,16 @@ const Profile: React.FC = () => {
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 rounded-full overflow-hidden bg-bg-gray flex-shrink-0">
               <img
-                src={mockUserProfile.avatar}
-                alt={mockUserProfile.nickname}
+                src={user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'}
+                alt={user?.nickname || '用户'}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-text-primary">
-                {mockUserProfile.nickname}
+                {user?.nickname || user?.username || '用户'}
               </h2>
-              <p className="text-sm text-text-gray mt-1">{mockUserProfile.signature}</p>
+              <p className="text-sm text-text-gray mt-1">{user?.bio || '暂无签名'}</p>
               
               <div className="flex gap-6 mt-3">
                 {menuItems.map((item) => (
@@ -126,15 +142,18 @@ const Profile: React.FC = () => {
           {settingsItems.map((item) => (
             <button
               key={item.label}
-              className="w-full flex items-center justify-between px-4 py-4 hover:bg-bg-gray transition-colors"
+              onClick={item.isLogout ? handleLogout : undefined}
+              className={`w-full flex items-center justify-between px-4 py-4 hover:bg-bg-gray transition-colors ${item.isLogout ? 'text-red-500' : ''}`}
             >
               <div className="flex items-center gap-3">
-                <div className="text-text-gray">{renderIcon(item.icon)}</div>
-                <span className="text-text-primary">{item.label}</span>
+                <div className={item.isLogout ? 'text-red-500' : 'text-text-gray'}>{renderIcon(item.icon)}</div>
+                <span className={item.isLogout ? 'text-red-500' : 'text-text-primary'}>{item.label}</span>
               </div>
-              <svg className="w-5 h-5 text-text-gray" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+              {!item.isLogout && (
+                <svg className="w-5 h-5 text-text-gray" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              )}
             </button>
           ))}
         </div>
