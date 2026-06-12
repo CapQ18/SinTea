@@ -34,17 +34,23 @@ const FeedPost: React.FC = () => {
   });
 
   const handleAddImage = () => {
-    fileInputRef.current?.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0 && images.length < 6) {
       const file = files[0];
+      if (!file.type.startsWith('image/')) {
+        alert('请选择图片文件');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result as string;
-        setImages([...images, result]);
+        setImages(prev => [...prev, result]);
       };
       reader.readAsDataURL(file);
     }
@@ -54,11 +60,22 @@ const FeedPost: React.FC = () => {
   };
 
   const handleRemoveImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handlePost = () => {
-    if (!shopName.trim() || !drinkName.trim() || !content.trim()) return;
+    if (!shopName.trim()) {
+      alert('请填写奶茶店名');
+      return;
+    }
+    if (!drinkName.trim()) {
+      alert('请填写奶茶名');
+      return;
+    }
+    if (!content.trim()) {
+      alert('请填写评价内容');
+      return;
+    }
 
     setIsPosting(true);
     
@@ -200,21 +217,23 @@ const FeedPost: React.FC = () => {
         <button
           onClick={handlePost}
           disabled={!isFormValid || isPosting}
-          className={`px-4 py-1.5 rounded-button text-sm font-medium transition-all ${
+          className={`px-4 py-1.5 rounded-button text-sm font-medium transition-all min-w-[60px] ${
             isFormValid && !isPosting
-              ? 'bg-primary text-white active:scale-95'
+              ? 'bg-primary text-white'
               : 'bg-bg-gray text-text-gray cursor-not-allowed'
           }`}
         >
-          {isPosting ? '发布中...' : '发布'}
+          {isPosting ? '发布中' : '发布'}
         </button>
       </header>
+
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/jpg,image/gif"
         onChange={handleFileChange}
         className="hidden"
+        multiple={false}
       />
 
       {showSuccess ? (
@@ -231,7 +250,7 @@ const FeedPost: React.FC = () => {
             <div className="bg-white rounded-lg">
               <div className="p-4">
                 <div
-                  className="w-24 h-24 rounded-lg bg-bg-gray flex items-center justify-center cursor-pointer hover:bg-border transition-colors"
+                  className="w-24 h-24 rounded-lg bg-bg-gray flex items-center justify-center cursor-pointer hover:bg-border transition-colors border-2 border-dashed border-border"
                   onClick={handleAddImage}
                 >
                   <svg className="w-8 h-8 text-text-gray" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -241,7 +260,7 @@ const FeedPost: React.FC = () => {
                 </div>
 
                 {images.length > 0 && (
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {images.map((img, idx) => (
                       <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden">
                         <img
@@ -261,7 +280,7 @@ const FeedPost: React.FC = () => {
                     ))}
                     {images.length < 6 && (
                       <div
-                        className="w-20 h-20 rounded-lg bg-bg-gray flex items-center justify-center cursor-pointer hover:bg-border transition-colors"
+                        className="w-20 h-20 rounded-lg bg-bg-gray flex items-center justify-center cursor-pointer hover:bg-border transition-colors border-2 border-dashed border-border"
                         onClick={handleAddImage}
                       >
                         <svg className="w-6 h-6 text-text-gray" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
