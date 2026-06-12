@@ -9,6 +9,7 @@ export interface PostFormData {
   content: string;
   type: 'recommend' | 'neutral' | 'warning';
   images: string[];
+  rating?: number;
   dna: {
     sweetness: number;
     tea: number;

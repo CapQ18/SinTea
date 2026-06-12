@@ -61,6 +61,20 @@ const FeedCard: React.FC<FeedCardProps> = ({
     }
   };
 
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, idx) => (
+      <svg
+        key={idx}
+        className={`w-4 h-4 ${idx < rating ? 'rating-star' : 'rating-star-empty'}`}
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    ));
+  };
+
   const renderImages = () => {
     const imageCount = item.images.length;
 
@@ -78,7 +92,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
           <img
             src={item.images[0]}
             alt="内容图片"
-            className="w-full h-48 object-cover bg-bg-gray"
+            className="w-full h-56 object-cover bg-bg-gray"
           />
         </div>
       );
@@ -99,7 +113,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
               <img
                 src={img}
                 alt={`图片${idx + 1}`}
-                className="w-full h-24 object-cover bg-bg-gray"
+                className="w-full h-28 object-cover bg-bg-gray"
               />
             </div>
           ))}
@@ -134,15 +148,17 @@ const FeedCard: React.FC<FeedCardProps> = ({
     );
   };
 
+  const isHighLike = likes >= 500;
+
   return (
     <div
-      className="bg-white rounded-lg mb-3 overflow-hidden cursor-pointer active:bg-gray-50 transition-colors"
+      className="bg-white rounded-lg mb-3 overflow-hidden cursor-pointer active:bg-gray-50 transition-all duration-200 shadow-sm"
       onClick={() => onCardClick?.(item.id)}
     >
       <div className="p-4">
         <div className="flex items-start gap-3">
           <div
-            className="w-10 h-10 rounded-full bg-bg-gray overflow-hidden flex-shrink-0 cursor-pointer"
+            className="w-11 h-11 rounded-full bg-gradient-to-br from-secondary-light to-accent flex-shrink-0 cursor-pointer overflow-hidden ring-2 ring-accent-light"
             onClick={(e) => {
               e.stopPropagation();
               onUserClick?.(item.user.id);
@@ -158,7 +174,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span
-                className="font-medium text-text-primary cursor-pointer"
+                className="font-semibold text-text-primary cursor-pointer hover:text-primary transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   onUserClick?.(item.user.id);
@@ -167,21 +183,46 @@ const FeedCard: React.FC<FeedCardProps> = ({
                 {item.user.name}
               </span>
               {item.user.title && (
-                <span className="text-xs text-text-gray">· {item.user.title}</span>
+                <span className="text-xs text-text-gray px-2 py-0.5 bg-bg-gray rounded-full">
+                  {item.user.title}
+                </span>
+              )}
+              {isHighLike && (
+                <span className="like-badge flex items-center gap-1">
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                  </svg>
+                  高赞
+                </span>
               )}
             </div>
 
-            <div className="mt-1.5">
-              <span className="text-sm text-text-primary font-medium">#{item.tag}</span>
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className="text-sm font-medium text-primary">#{item.tag}</span>
+              <span className={`tag ${getTagStyle(item.type)}`}>
+                {getTagText(item.type)}
+              </span>
             </div>
           </div>
 
-          <span className={`tag ${getTagStyle(item.type)}`}>
-            {getTagText(item.type)}
-          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            className="text-text-gray hover:text-primary transition-colors"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+            </svg>
+          </button>
         </div>
 
         <div className="mt-3">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-sm font-medium text-text-secondary">{item.shop}</span>
+            <div className="flex items-center">{renderStars(item.rating)}</div>
+          </div>
           <p className="text-text-secondary text-sm leading-relaxed whitespace-pre-wrap">
             {item.content}
           </p>
@@ -199,35 +240,47 @@ const FeedCard: React.FC<FeedCardProps> = ({
 
         {renderImages()}
 
-        <div className="mt-3 flex items-center justify-between text-xs text-text-gray">
-          <span>{item.date}</span>
+        <div className="mt-4 pt-4 border-t border-border-light flex items-center justify-between">
+          <span className="text-xs text-text-gray">{item.date}</span>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
             <button
               onClick={handleComment}
-              className="flex items-center gap-1 hover:text-primary transition-colors"
+              className="flex items-center gap-1.5 hover:text-primary transition-colors"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="w-5 h-5 text-text-gray" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
               </svg>
-              <span>{formatNumber(item.comments)}</span>
+              <span className="text-xs text-text-gray">{formatNumber(item.comments)}</span>
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              className="flex items-center gap-1.5 hover:text-primary transition-colors"
+            >
+              <svg className="w-5 h-5 text-text-gray" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+              </svg>
+              <span className="text-xs text-text-gray">分享</span>
             </button>
 
             <button
               onClick={handleLike}
-              className={`flex items-center gap-1 transition-colors ${
+              className={`flex items-center gap-1.5 transition-colors ${
                 isLiked ? 'text-warning' : 'hover:text-warning'
               }`}
             >
               <svg
-                className="w-4 h-4"
+                className="w-5 h-5"
                 fill={isLiked ? 'currentColor' : 'none'}
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
               </svg>
-              <span>{formatNumber(likes)}</span>
+              <span className="text-xs">{formatNumber(likes)}</span>
             </button>
           </div>
         </div>

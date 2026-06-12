@@ -20,6 +20,8 @@ export interface WishlistItem {
   category: '奶茶' | '果茶' | '咖啡';
   addedAt: string;
   isDrank: boolean;
+  price?: string;
+  rating?: number;
 }
 
 export interface UserProfile {
