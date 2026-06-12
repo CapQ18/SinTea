@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../../services/postService';
 
@@ -15,6 +15,7 @@ interface MilkTeaDNA {
 
 const FeedPost: React.FC = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [shopName, setShopName] = useState('');
   const [drinkName, setDrinkName] = useState('');
   const [content, setContent] = useState('');
@@ -33,9 +34,22 @@ const FeedPost: React.FC = () => {
   });
 
   const handleAddImage = () => {
-    if (images.length < 6) {
-      const newImage = `https://picsum.photos/seed/${Date.now()}/400/400`;
-      setImages([...images, newImage]);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0 && images.length < 6) {
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        setImages([...images, result]);
+      };
+      reader.readAsDataURL(file);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -195,6 +209,13 @@ const FeedPost: React.FC = () => {
           {isPosting ? '发布中...' : '发布'}
         </button>
       </header>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
 
       {showSuccess ? (
         <div className="flex-1 flex flex-col items-center justify-center">
