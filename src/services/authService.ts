@@ -16,6 +16,23 @@ const saveUsers = (users: User[]): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
 };
 
+export const initTestUsers = (): void => {
+  const users = getUsers();
+  if (users.length === 0) {
+    const testUser: User = {
+      id: 'test-user-id',
+      username: 'test',
+      email: 'test@example.com',
+      password: '123456',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test',
+      nickname: '奶茶爱好者',
+      bio: '每天一杯奶茶，快乐一整天！',
+      createdAt: new Date().toISOString(),
+    };
+    saveUsers([testUser]);
+  }
+};
+
 export const register = (formData: RegisterFormData): { success: boolean; message: string; user?: User } => {
   const users = getUsers();
   

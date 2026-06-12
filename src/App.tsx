@@ -9,7 +9,9 @@ import Discover from './pages/Discover';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NavBar from './components/NavBar';
-import { isLoggedIn } from './services/authService';
+import { isLoggedIn, initTestUsers } from './services/authService';
+
+initTestUsers();
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (!isLoggedIn()) {
