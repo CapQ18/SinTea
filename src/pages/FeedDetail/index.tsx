@@ -102,10 +102,10 @@ const FeedDetail: React.FC = () => {
     const levelPaths = [];
     for (let i = 1; i <= levels; i++) {
       const levelRadius = (radius / levels) * i;
-      let path = `M ${centerX + levelRadius} ${centerY}`;
-      for (let j = 1; j <= 6; j++) {
+      let path = '';
+      for (let j = 0; j < 6; j++) {
         const point = getPoint(j, (i / levels) * 100, levelRadius);
-        path += ` L ${point.x} ${point.y}`;
+        path += j === 0 ? `M ${point.x} ${point.y}` : ` L ${point.x} ${point.y}`;
       }
       path += ' Z';
       levelPaths.push(<path key={i} d={path} fill="none" stroke="#E8E8E8" strokeWidth="1" />);
