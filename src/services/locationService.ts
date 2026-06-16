@@ -22,7 +22,7 @@ export function getCurrentPosition(): Promise<{
         });
       },
       (error) => {
-        const errorMessages = {
+        const errorMessages: Record<number, string> = {
           1: '用户拒绝了定位请求',
           2: '无法获取位置信息',
           3: '定位请求超时'

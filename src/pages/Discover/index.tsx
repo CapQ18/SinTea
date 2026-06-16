@@ -150,7 +150,8 @@ const Discover: React.FC = () => {
         setNearbyShops(shopsWithDistance);
       }
     } catch (error) {
-      setLocationError(error.message);
+      const errorMsg = error instanceof Error ? error.message : '定位失败';
+      setLocationError(errorMsg);
       // 定位失败，显示所有店铺
       setNearbyShops(mockShops);
     } finally {
