@@ -17,7 +17,7 @@ const Login: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    const result = login(formData);
+    const result = await login(formData);
     
     if (result.success) {
       navigate('/');

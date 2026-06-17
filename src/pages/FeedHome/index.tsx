@@ -26,9 +26,9 @@ const FeedHome: React.FC = () => {
     { key: 'nearby', label: '附近' },
   ];
 
-  const loadPosts = () => {
+  const loadPosts = async () => {
     const userPosts = getPosts();
-    const enrichedPosts = enrichPostsWithUser([...userPosts, ...feedMockData]);
+    const enrichedPosts = await enrichPostsWithUser([...userPosts, ...feedMockData]);
     setFeedList(enrichedPosts);
   };
 

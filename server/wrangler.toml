@@ -1,0 +1,16 @@
+name = "sintea-api"
+main = "src/index.ts"
+compatibility_date = "2026-06-17"
+compatibility_flags = ["nodejs_compat"]
+
+[d1_databases]
+sintea_db = { binding = "D1_DB" }
+
+[r2_buckets]
+sintea_images = { binding = "R2_IMAGES" }
+
+[env.production]
+name = "sintea-api"
+
+[env.development]
+name = "sintea-api-dev"

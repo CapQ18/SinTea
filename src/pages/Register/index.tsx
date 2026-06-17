@@ -20,7 +20,7 @@ const Register: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    const result = register(formData);
+    const result = await register(formData);
     
     if (result.success) {
       await login({ username: formData.username, password: formData.password });

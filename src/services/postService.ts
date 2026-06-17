@@ -87,8 +87,8 @@ export const getPostById = (postId: number): FeedItem | undefined => {
   return posts.find(p => p.id === postId);
 };
 
-export const enrichPostsWithUser = (posts: FeedItem[]): FeedItem[] => {
-  const users = getAllUsers();
+export const enrichPostsWithUser = async (posts: FeedItem[]): Promise<FeedItem[]> => {
+  const users = await getAllUsers();
   
   return posts.map(post => {
     if (post.userId) {

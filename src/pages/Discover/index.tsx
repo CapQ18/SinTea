@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentPosition, calculateDistance, formatDistance } from '../../services/locationService';
+import { API, request } from '../../services/apiService';
 
 type TabType = 'shops' | 'nearby';
 
@@ -26,7 +27,6 @@ const Discover: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
 
-  // 模拟商店数据
   const mockShops: Shop[] = [
     {
       id: '1',
@@ -50,7 +50,7 @@ const Discover: React.FC = () => {
       brand: '茶颜悦色',
       images: [
         '/images/76fbb72dc2fee8cc6bebfd437e346232.jpg',
-        '/images/139deb276805c2024f1d4c65a832472b.jpg',
+        '/images/139deb276805c2024f1d4c65a832472b2b52be1c62f7190.jpg',
         '/images/d0849ec52e1a0509b164c7d8ee94bf27.jpg',
       ],
       description: '源自长沙的新中式茶饮品牌，以幽兰拿铁和声声乌龙为招牌，茶香浓郁。',
@@ -110,25 +110,31 @@ const Discover: React.FC = () => {
     },
   ];
 
-  // 获取附近奶茶店
+  const fetchShops = async () => {
+    try {
+      const data = await request<{ success: boolean; shops?: Shop[] }>(API.shops.list);
+      if (data.success && data.shops) {
+        setShops(data.shops);
+      }
+    } catch {
+      setShops(mockShops);
+    }
+  };
+
   const fetchNearbyShops = async () => {
     setLoading(true);
     setLocationError('');
 
     try {
-      // 获取用户当前位置（浏览器原生API）
       const position = await getCurrentPosition();
       
-      // 如果后端服务运行中，调用API获取附近店铺
       try {
-        const response = await fetch(
-          `http://localhost:3001/api/locations/search?lat=${position.latitude}&lng=${position.longitude}&radius=10`
+        const data = await request<{ success: boolean; shops?: Shop[] }>(
+          `${API.shops.nearby}?lat=${position.latitude}&lng=${position.longitude}&radius=10`
         );
-        const data = await response.json();
-        if (data.shops && data.shops.length > 0) {
+        if (data.success && data.shops && data.shops.length > 0) {
           setNearbyShops(data.shops);
         } else {
-          // 后端无数据，使用模拟数据并计算距离
           const shopsWithDistance = mockShops.map(shop => ({
             ...shop,
             distance: shop.latitude && shop.longitude
@@ -138,8 +144,7 @@ const Discover: React.FC = () => {
             .sort((a, b) => (a.distance || 0) - (b.distance || 0));
           setNearbyShops(shopsWithDistance);
         }
-      } catch (apiError) {
-        // 后端未运行，使用模拟数据计算距离
+      } catch {
         const shopsWithDistance = mockShops.map(shop => ({
           ...shop,
           distance: shop.latitude && shop.longitude
@@ -152,7 +157,6 @@ const Discover: React.FC = () => {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '定位失败';
       setLocationError(errorMsg);
-      // 定位失败，显示所有店铺
       setNearbyShops(mockShops);
     } finally {
       setLoading(false);
@@ -160,7 +164,7 @@ const Discover: React.FC = () => {
   };
 
   useEffect(() => {
-    setShops(mockShops);
+    fetchShops();
   }, []);
 
   useEffect(() => {
@@ -200,7 +204,6 @@ const Discover: React.FC = () => {
         </div>
       </header>
 
-      {/* 定位状态提示 */}
       {activeTab === 'nearby' && (
         <div className="px-4 py-2 bg-white mt-3">
           {loading ? (

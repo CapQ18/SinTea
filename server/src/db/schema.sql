@@ -1,0 +1,94 @@
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS shops;
+DROP TABLE IF EXISTS drinks;
+DROP TABLE IF EXISTS feeds;
+DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS wishlists;
+DROP TABLE IF EXISTS likes;
+
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  nickname TEXT,
+  avatar TEXT,
+  bio TEXT DEFAULT '',
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE shops (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  brand TEXT,
+  description TEXT,
+  address TEXT,
+  latitude REAL,
+  longitude REAL,
+  rating REAL DEFAULT 0,
+  priceRange TEXT DEFAULT '$',
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE drinks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  shopId INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  category TEXT DEFAULT '奶茶',
+  price REAL,
+  description TEXT,
+  rating REAL DEFAULT 0,
+  imageUrl TEXT,
+  FOREIGN KEY (shopId) REFERENCES shops(id)
+);
+
+CREATE TABLE feeds (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER NOT NULL,
+  shopName TEXT,
+  drinkName TEXT,
+  content TEXT,
+  type TEXT DEFAULT 'neutral',
+  rating INTEGER DEFAULT 3,
+  images TEXT,
+  sweetness INTEGER DEFAULT 50,
+  tea INTEGER DEFAULT 50,
+  milk INTEGER DEFAULT 50,
+  taste INTEGER DEFAULT 50,
+  coolness INTEGER DEFAULT 50,
+  appearance INTEGER DEFAULT 50,
+  likes INTEGER DEFAULT 0,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES users(id)
+);
+
+CREATE TABLE comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  feedId INTEGER NOT NULL,
+  userId INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (feedId) REFERENCES feeds(id),
+  FOREIGN KEY (userId) REFERENCES users(id)
+);
+
+CREATE TABLE wishlists (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER NOT NULL,
+  drinkName TEXT NOT NULL,
+  shopName TEXT,
+  category TEXT DEFAULT '奶茶',
+  imageUrl TEXT,
+  isDrank INTEGER DEFAULT 0,
+  addedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES users(id)
+);
+
+CREATE TABLE likes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER NOT NULL,
+  feedId INTEGER NOT NULL,
+  FOREIGN KEY (userId) REFERENCES users(id),
+  FOREIGN KEY (feedId) REFERENCES feeds(id),
+  UNIQUE(userId, feedId)
+);
