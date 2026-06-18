@@ -45,20 +45,36 @@ export const getAuthHeaders = () => {
 };
 
 export const request = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...getAuthHeaders(),
-      ...options.headers,
-    },
-  });
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: '请求失败' }));
-    throw new Error(error.message || '请求失败');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20秒超时
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        ...getAuthHeaders(),
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: '请求失败' }));
+      throw new Error(error.message || '请求失败');
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('网络请求超时，请检查网络连接');
+    }
+    if (error instanceof TypeError) {
+      throw new Error('网络连接失败，请检查网络');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  
-  return response.json();
 };
 
 export const setToken = (token: string) => {

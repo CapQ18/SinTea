@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { compress } from 'hono/compress';
 import auth from './routes/auth';
 import users from './routes/users';
 import shops from './routes/shops';
@@ -10,9 +11,13 @@ import upload from './routes/upload';
 const app = new Hono();
 
 app.use('/*', cors({
-  origin: ['http://localhost:5173', 'https://*.sintea.pages.dev', 'https://*.pages.dev'],
-  credentials: true
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400,
 }));
+
+app.use('/*', compress());
 
 app.route('/api/auth', auth);
 app.route('/api/users', users);
