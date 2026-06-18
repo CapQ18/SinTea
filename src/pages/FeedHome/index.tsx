@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import FeedCard from '../../components/FeedCard';
 import { feedMockData, FeedItem } from '../../types/feed';
 import { useNavigate } from 'react-router-dom';
-import { getPosts, enrichPostsWithUser } from '../../services/postService';
+import { enrichPostsWithUser } from '../../services/postService';
 import { API, request } from '../../services/apiService';
 
 type TabType = 'follow' | 'latest' | 'best' | 'nearby';
@@ -53,17 +53,14 @@ const FeedHome: React.FC = () => {
           rating: feed.rating || 3,
           location: feed.location || '',
         }));
-        const userPosts = getPosts();
-        const enrichedPosts = await enrichPostsWithUser([...apiPosts, ...userPosts, ...feedMockData]);
+        const enrichedPosts = await enrichPostsWithUser([...apiPosts, ...feedMockData]);
         setFeedList(enrichedPosts);
       } else {
-        const userPosts = getPosts();
-        const enrichedPosts = await enrichPostsWithUser([...userPosts, ...feedMockData]);
+        const enrichedPosts = await enrichPostsWithUser([...feedMockData]);
         setFeedList(enrichedPosts);
       }
     } catch {
-      const userPosts = getPosts();
-      const enrichedPosts = await enrichPostsWithUser([...userPosts, ...feedMockData]);
+      const enrichedPosts = await enrichPostsWithUser([...feedMockData]);
       setFeedList(enrichedPosts);
     }
   };
