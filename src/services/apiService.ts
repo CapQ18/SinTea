@@ -1,6 +1,6 @@
 const isProduction = import.meta.env.PROD;
 const API_BASE_URL = isProduction 
-  ? 'https://sintea-api.1666531256.workers.dev' 
+  ? ''  // 生产环境使用同域名，Pages Functions 自动处理
   : 'http://localhost:8787';
 
 export const API = {
