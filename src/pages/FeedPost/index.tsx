@@ -78,7 +78,7 @@ const FeedPost: React.FC = () => {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!shopName.trim()) {
       setErrorMessage('请填写奶茶店名');
       return;
@@ -93,24 +93,28 @@ const FeedPost: React.FC = () => {
     }
 
     setIsPosting(true);
-    
-    createPost({
-      shopName: shopName.trim(),
-      drinkName: drinkName.trim(),
-      content: content.trim(),
-      type: postType,
-      images: images,
-      rating: rating,
-      dna: milkTeaDNA,
-    });
-    
-    setTimeout(() => {
-      setIsPosting(false);
+    setErrorMessage('');
+
+    try {
+      await createPost({
+        shopName: shopName.trim(),
+        drinkName: drinkName.trim(),
+        content: content.trim(),
+        type: postType,
+        images: images,
+        rating: rating,
+        dna: milkTeaDNA,
+      });
+
       setShowSuccess(true);
       setTimeout(() => {
         navigate('/');
       }, 1500);
-    }, 500);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '发布失败，请重试');
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   const isFormValid = shopName.trim() && drinkName.trim() && content.trim();
