@@ -1,26 +1,16 @@
 // Cloudflare Pages Functions - 后端 API
-// 共享前端域名，无跨域问题，国内访问稳定
+// 仅处理 /api/* 路径，其他路径交给前端 SPA
 
 interface Env {
   DB: D1Database;
 }
 
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  password: string;
-  nickname: string;
-  avatar: string;
-  bio: string;
-}
-
-// 简单的 token 生成（不依赖 jose）
+// 简单的 token 生成
 function generateToken(userId: number, username: string): string {
   const payload = {
     id: userId,
     username,
-    exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天
+    exp: Date.now() + 7 * 24 * 60 * 60 * 1000
   };
   return btoa(JSON.stringify(payload));
 }
@@ -35,7 +25,6 @@ function verifyToken(token: string): { id: number; username: string } | null {
   }
 }
 
-// 简单的密码哈希（使用 Web Crypto）
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password + 'sintea_salt_2026');
@@ -61,14 +50,13 @@ function jsonResponse(data: any, status = 200) {
   });
 }
 
-// 路由处理
 export const onRequest: PagesFunction<Env> = async (context) => {
-  const { request, env, params } = context;
+  const { request, env } = context;
   const url = new URL(request.url);
   const path = url.pathname;
   const method = request.method;
 
-  // 处理 OPTIONS 预检
+  // OPTIONS 预检
   if (method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders() });
   }
@@ -124,7 +112,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       const user = await env.DB.prepare(
         'SELECT * FROM users WHERE username = ?'
-      ).bind(username).first() as User | null;
+      ).bind(username).first() as any;
 
       if (!user) {
         return jsonResponse({ success: false, message: '用户不存在' }, 400);
@@ -415,8 +403,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       return jsonResponse({ success: true, commentId: Number(result.lastInsertRowid) });
     }
 
-    // 404
-    return jsonResponse({ success: false, message: '接口不存在' }, 404);
+    // 其他 /api/* 路径
+    if (path.startsWith('/api/')) {
+      return jsonResponse({ success: false, message: '接口不存在' }, 404);
+    }
+
+    // 非 /api/ 路径，交给 Pages 静态资源处理（SPA 路由）
+    // 通过返回 next() 让 Pages 继续处理
+    return (context as any).next();
 
   } catch (error) {
     return jsonResponse({ success: false, message: '服务器错误: ' + (error as Error).message }, 500);
