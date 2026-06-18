@@ -82,12 +82,12 @@ export const toggleLike = async (postId: number): Promise<FeedItem | null> => {
   }
 };
 
-export const enrichPostsWithUser = async (posts: FeedItem[]): Promise<FeedItem[]> => {
+export const enrichPostsWithUser = async (posts: FeedItem[], followIds: string[] = []): Promise<FeedItem[]> => {
   const users = await getAllUsers();
   
   return posts.map(post => {
     if (post.userId) {
-      const user = users.find(u => u.id === post.userId);
+      const user = users.find(u => String(u.id) === String(post.userId));
       if (user) {
         return {
           ...post,
@@ -96,7 +96,7 @@ export const enrichPostsWithUser = async (posts: FeedItem[]): Promise<FeedItem[]
             avatar: user.avatar,
             name: user.nickname || user.username,
             title: '',
-            isFollowing: false,
+            isFollowing: followIds.includes(String(user.id)),
           },
         };
       }

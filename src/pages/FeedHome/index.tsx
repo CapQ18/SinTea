@@ -61,10 +61,10 @@ const FeedHome: React.FC = () => {
           rating: feed.rating || 3,
           location: feed.location || '',
         }));
-        const enrichedPosts = await enrichPostsWithUser([...apiPosts, ...feedMockData]);
+        const enrichedPosts = await enrichPostsWithUser([...apiPosts, ...feedMockData], followedIds);
         setFeedList(enrichedPosts);
       } else {
-        const enrichedPosts = await enrichPostsWithUser([...feedMockData]);
+        const enrichedPosts = await enrichPostsWithUser([...feedMockData], followedIds);
         setFeedList(enrichedPosts);
       }
     } catch {

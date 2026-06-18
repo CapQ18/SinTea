@@ -12,12 +12,14 @@ function generateToken(userId: number, username: string): string {
     username,
     exp: Date.now() + 7 * 24 * 60 * 60 * 1000
   };
-  return btoa(JSON.stringify(payload));
+  const json = JSON.stringify(payload);
+  return btoa(encodeURIComponent(json));
 }
 
 function verifyToken(token: string): { id: number; username: string } | null {
   try {
-    const payload = JSON.parse(atob(token));
+    const decoded = decodeURIComponent(atob(token));
+    const payload = JSON.parse(decoded);
     if (payload.exp < Date.now()) return null;
     return { id: payload.id, username: payload.username };
   } catch {
