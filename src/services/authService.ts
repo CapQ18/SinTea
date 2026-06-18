@@ -7,7 +7,8 @@ export const initTestUsers = (): void => {
 };
 
 export const getAllUsers = async (): Promise<User[]> => {
-  return request<User[]>(API.users.list);
+  const response = await request<{ success: boolean; users?: User[] }>(API.users.list);
+  return response.success && response.users ? response.users : [];
 };
 
 export const register = async (formData: RegisterFormData): Promise<{ success: boolean; message: string; user?: User }> => {

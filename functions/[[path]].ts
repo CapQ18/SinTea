@@ -160,6 +160,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       return jsonResponse({ success: true, user });
     }
 
+    // 用户列表
+    if (path === '/api/users' && method === 'GET') {
+      const results = await env.DB.prepare(
+        'SELECT id, username, email, nickname, avatar, bio FROM users'
+      ).all();
+
+      return jsonResponse({ success: true, users: results.results });
+    }
+
     // 店铺列表
     if (path === '/api/shops' && method === 'GET') {
       const results = await env.DB.prepare(
