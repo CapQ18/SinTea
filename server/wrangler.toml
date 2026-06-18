@@ -3,11 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2026-06-17"
 compatibility_flags = ["nodejs_compat"]
 
-[d1_databases]
-sintea_db = { binding = "D1_DB" }
-
-[r2_buckets]
-sintea_images = { binding = "R2_IMAGES" }
+[[d1_databases]]
+binding = "D1_DB"
+database_name = "sintea-db"
+database_id = "835cf7ca-8956-4a13-8f2e-ad9703439817"
 
 [env.production]
 name = "sintea-api"
