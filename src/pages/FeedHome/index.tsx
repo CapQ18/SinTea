@@ -29,14 +29,18 @@ const FeedHome: React.FC = () => {
 
   const loadPosts = async () => {
     try {
-      const [feedData, followData] = await Promise.all([
-        request<{ success: boolean; feeds?: any[] }>(API.feeds.list),
-        request<{ success: boolean; follows?: any[] }>(API.follows.list),
-      ]);
+      const feedData = await request<{ success: boolean; feeds?: any[] }>(API.feeds.list);
 
-      const followedIds = followData.success && followData.follows
-        ? followData.follows.map(f => String(f.targetUserId))
-        : [];
+      // 关注列表可能失败（未登录），单独处理
+      let followedIds: string[] = [];
+      try {
+        const followData = await request<{ success: boolean; follows?: any[] }>(API.follows.list);
+        if (followData.success && followData.follows) {
+          followedIds = followData.follows.map(f => String(f.targetUserId));
+        }
+      } catch {
+        // 未登录或获取关注列表失败，使用空数组
+      }
 
       if (feedData.success && feedData.feeds) {
         const apiPosts: FeedItem[] = feedData.feeds.map((feed: any) => ({
