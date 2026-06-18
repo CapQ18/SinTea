@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import FeedCard from '../../components/FeedCard';
 import { feedMockData, FeedItem } from '../../types/feed';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { enrichPostsWithUser } from '../../services/postService';
 import { API, request } from '../../services/apiService';
 
@@ -18,7 +18,7 @@ const FeedHome: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const navigate = useNavigate();
-  const refreshKey = useRef(0);
+  const location = useLocation();
 
   const tabs: { key: TabType; label: string }[] = [
     { key: 'follow', label: '关注' },
@@ -67,7 +67,7 @@ const FeedHome: React.FC = () => {
 
   useEffect(() => {
     loadPosts();
-  }, [refreshKey.current]);
+  }, [location.key]);
 
   const filterAndSortFeeds = (feeds: FeedItem[], tab: TabType): FeedItem[] => {
     let result = [...feeds];
@@ -95,12 +95,10 @@ const FeedHome: React.FC = () => {
 
   const displayedFeeds = filterAndSortFeeds(feedList, activeTab);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    refreshKey.current += 1;
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1500);
+    await loadPosts();
+    setIsRefreshing(false);
   };
 
   const handleLoadMore = () => {
