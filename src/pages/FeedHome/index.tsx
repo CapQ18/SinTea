@@ -3,6 +3,7 @@ import FeedCard from '../../components/FeedCard';
 import { feedMockData, FeedItem } from '../../types/feed';
 import { useNavigate } from 'react-router-dom';
 import { getPosts, enrichPostsWithUser } from '../../services/postService';
+import { API, request } from '../../services/apiService';
 
 type TabType = 'follow' | 'latest' | 'best' | 'nearby';
 
@@ -27,9 +28,44 @@ const FeedHome: React.FC = () => {
   ];
 
   const loadPosts = async () => {
-    const userPosts = getPosts();
-    const enrichedPosts = await enrichPostsWithUser([...userPosts, ...feedMockData]);
-    setFeedList(enrichedPosts);
+    try {
+      const data = await request<{ success: boolean; feeds?: any[] }>(API.feeds.list);
+      if (data.success && data.feeds) {
+        const apiPosts: FeedItem[] = data.feeds.map((feed: any) => ({
+          id: Number(feed.id),
+          userId: String(feed.userId),
+          user: {
+            id: Number(feed.userId),
+            avatar: feed.avatar || '',
+            name: feed.nickname || feed.username || '用户',
+            title: '',
+            isFollowing: false,
+          },
+          tag: feed.drinkName ? `#${feed.drinkName}` : '',
+          type: feed.type as 'recommend' | 'neutral' | 'warning' || 'neutral',
+          content: feed.content || '',
+          images: feed.images || [],
+          date: feed.createdAt ? new Date(feed.createdAt).toLocaleDateString('zh-CN') : new Date().toLocaleDateString('zh-CN'),
+          comments: feed.comments ? feed.comments.length : 0,
+          likes: feed.likes || 0,
+          isLiked: false,
+          shop: feed.shopName || '',
+          rating: feed.rating || 3,
+          location: feed.location || '',
+        }));
+        const userPosts = getPosts();
+        const enrichedPosts = await enrichPostsWithUser([...apiPosts, ...userPosts, ...feedMockData]);
+        setFeedList(enrichedPosts);
+      } else {
+        const userPosts = getPosts();
+        const enrichedPosts = await enrichPostsWithUser([...userPosts, ...feedMockData]);
+        setFeedList(enrichedPosts);
+      }
+    } catch {
+      const userPosts = getPosts();
+      const enrichedPosts = await enrichPostsWithUser([...userPosts, ...feedMockData]);
+      setFeedList(enrichedPosts);
+    }
   };
 
   useEffect(() => {
