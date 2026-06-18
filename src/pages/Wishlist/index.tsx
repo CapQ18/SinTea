@@ -1,13 +1,40 @@
-import React, { useState } from 'react';
-import { mockWishlist, WishlistItem } from '../../mock';
+import React, { useState, useEffect } from 'react';
+import { API, request } from '../../services/apiService';
+
+interface WishlistItem {
+  id: number;
+  drinkName: string;
+  shopName: string;
+  category: string;
+  imageUrl?: string;
+  isDrank: boolean;
+  notes?: string;
+}
 
 type TabType = 'collection' | 'nearby';
 
 const Wishlist: React.FC = () => {
-  const [items, setItems] = useState<WishlistItem[]>(mockWishlist);
+  const [items, setItems] = useState<WishlistItem[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('collection');
   const [showDrank, setShowDrank] = useState(false);
   const [statusMap, setStatusMap] = useState<Record<number, 'like' | 'dislike' | null>>({});
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newItem, setNewItem] = useState({ shopName: '', drinkName: '', category: '奶茶', notes: '' });
+
+  useEffect(() => {
+    loadWishlists();
+  }, []);
+
+  const loadWishlists = async () => {
+    try {
+      const response = await request<{ success: boolean; wishlists?: WishlistItem[] }>(API.wishlists.list);
+      if (response.success && response.wishlists) {
+        setItems(response.wishlists);
+      }
+    } catch {
+      console.error('Failed to load wishlists');
+    }
+  };
 
   const filteredItems = items.filter((item) => item.isDrank === showDrank);
 
@@ -18,12 +45,49 @@ const Wishlist: React.FC = () => {
     }));
   };
 
-  const handleDrank = (id: number) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, isDrank: !item.isDrank } : item
-      )
-    );
+  const handleDrank = async (id: number, currentIsDrank: boolean) => {
+    try {
+      await request<{ success: boolean }>(API.wishlists.update(String(id)), {
+        method: 'PUT',
+        body: JSON.stringify({ isDrank: !currentIsDrank }),
+      });
+      loadWishlists();
+    } catch {
+      console.error('Failed to update wishlist');
+    }
+  };
+
+  const handleAdd = async () => {
+    if (!newItem.shopName || !newItem.drinkName) {
+      return;
+    }
+
+    try {
+      await request<{ success: boolean }>(API.wishlists.create, {
+        method: 'POST',
+        body: JSON.stringify(newItem),
+      });
+      setShowAddModal(false);
+      setNewItem({ shopName: '', drinkName: '', category: '奶茶', notes: '' });
+      loadWishlists();
+    } catch {
+      console.error('Failed to add wishlist');
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('确定删除吗？')) {
+      return;
+    }
+
+    try {
+      await request<{ success: boolean }>(API.wishlists.delete(String(id)), {
+        method: 'DELETE',
+      });
+      loadWishlists();
+    } catch {
+      console.error('Failed to delete wishlist');
+    }
   };
 
   return (
@@ -87,7 +151,10 @@ const Wishlist: React.FC = () => {
             <p className="text-text-gray text-base">
               {showDrank ? '还没有喝过的奶茶' : '还没有想喝的奶茶'}
             </p>
-            <button className="mt-4 px-6 py-2.5 btn-primary text-sm">
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="mt-4 px-6 py-2.5 btn-primary text-sm"
+            >
               {showDrank ? '去发现' : '去添加'}
             </button>
           </div>
@@ -100,7 +167,7 @@ const Wishlist: React.FC = () => {
               >
                 <div className="aspect-square relative">
                   <img
-                    src={item.image}
+                    src={item.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.drinkName}`}
                     alt={item.drinkName}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
@@ -113,6 +180,14 @@ const Wishlist: React.FC = () => {
                       {statusMap[item.id] === 'like' ? '👍' : '👎'}
                     </div>
                   )}
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="absolute top-2 left-2 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
                     <button
                       onClick={() => toggleStatus(item.id)}
@@ -130,28 +205,11 @@ const Wishlist: React.FC = () => {
                       </p>
                       <p className="text-xs text-text-gray mt-0.5 truncate">{item.shopName}</p>
                     </div>
-                    {item.price && (
-                      <span className="text-xs font-bold text-primary ml-2">{item.price}</span>
-                    )}
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    {item.rating && (
-                      <div className="flex items-center">
-                        {Array.from({ length: 5 }, (_, idx) => (
-                          <svg
-                            key={idx}
-                            className={`w-3 h-3 ${idx < item.rating! ? 'rating-star' : 'rating-star-empty'}`}
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                          </svg>
-                        ))}
-                      </div>
-                    )}
+                    <span className="text-xs text-text-gray">{item.category}</span>
                     <button
-                      onClick={() => handleDrank(item.id)}
+                      onClick={() => handleDrank(item.id, item.isDrank)}
                       className="text-xs font-medium text-primary hover:text-primary-dark transition-colors"
                     >
                       {item.isDrank ? '移回' : '已喝'}
@@ -163,6 +221,90 @@ const Wishlist: React.FC = () => {
           </div>
         )}
       </div>
+
+      <button
+        onClick={() => setShowAddModal(true)}
+        className="fixed bottom-24 right-4 w-14 h-14 rounded-full btn-primary shadow-lg flex items-center justify-center text-white text-2xl hover:scale-110 transition-transform z-30"
+      >
+        +
+      </button>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-white rounded-t-2xl w-full p-4 animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-text-primary">添加心愿</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-text-gray">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-text-primary mb-1 block">店铺名称</label>
+                <input
+                  type="text"
+                  value={newItem.shopName}
+                  onChange={(e) => setNewItem({ ...newItem, shopName: e.target.value })}
+                  placeholder="输入店铺名"
+                  className="input-field w-full"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-text-primary mb-1 block">奶茶名称</label>
+                <input
+                  type="text"
+                  value={newItem.drinkName}
+                  onChange={(e) => setNewItem({ ...newItem, drinkName: e.target.value })}
+                  placeholder="输入奶茶名"
+                  className="input-field w-full"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-text-primary mb-1 block">分类</label>
+                <select
+                  value={newItem.category}
+                  onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                  className="input-field w-full"
+                >
+                  <option value="奶茶">奶茶</option>
+                  <option value="果茶">果茶</option>
+                  <option value="纯茶">纯茶</option>
+                  <option value="咖啡">咖啡</option>
+                  <option value="其他">其他</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-text-primary mb-1 block">备注（可选）</label>
+                <textarea
+                  value={newItem.notes}
+                  onChange={(e) => setNewItem({ ...newItem, notes: e.target.value })}
+                  placeholder="添加备注..."
+                  rows={2}
+                  className="input-field w-full resize-none"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleAdd}
+              disabled={!newItem.shopName || !newItem.drinkName}
+              className={`w-full mt-6 py-3 rounded-button text-sm font-medium transition-all ${
+                newItem.shopName && newItem.drinkName
+                  ? 'btn-primary'
+                  : 'bg-bg-gray text-text-gray cursor-not-allowed'
+              }`}
+            >
+              确认添加
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

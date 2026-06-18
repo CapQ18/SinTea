@@ -1,10 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, logout } from '../../services/authService';
+import { getCurrentUser, logout, getProfile } from '../../services/authService';
+import { API, request } from '../../services/apiService';
+import { User } from '../../types/user';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const user = getCurrentUser();
+  const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState({ reviews: 0, wishlist: 0, drank: 0, likes: 0 });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const profile = await getProfile();
+      if (profile) {
+        setUser(profile);
+      } else {
+        setUser(getCurrentUser());
+      }
+
+      const token = localStorage.getItem('sintea_token');
+      if (token) {
+        const feedsResponse = await request<{ success: boolean; feeds?: any[] }>(API.feeds.list);
+        const userFeeds = feedsResponse.success && feedsResponse.feeds
+          ? feedsResponse.feeds.filter(f => f.userId === user?.id)
+          : [];
+
+        const reviews = userFeeds.length;
+        const likes = userFeeds.reduce((sum, f) => sum + (f.likes || 0), 0);
+
+        const wishlistResponse = await request<{ success: boolean; wishlists?: any[] }>(API.wishlists.list);
+        const wishlists = wishlistResponse.success && wishlistResponse.wishlists
+          ? wishlistResponse.wishlists
+          : [];
+
+        const drank = wishlists.filter(w => w.isDrank).length;
+
+        setStats({ reviews, wishlist: wishlists.length, drank, likes });
+      }
+    } catch {
+      setUser(getCurrentUser());
+    }
+  };
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
@@ -19,14 +59,14 @@ const Profile: React.FC = () => {
   };
 
   const menuItems = [
-    { icon: 'reviews', label: '我的评价', count: 12 },
-    { icon: 'wishlist', label: '心愿单', count: 8 },
-    { icon: 'history', label: '喝过的', count: 56 },
-    { icon: 'likes', label: '获赞', count: 328 },
+    { icon: 'reviews', label: '我的评价', count: stats.reviews, path: '/' },
+    { icon: 'wishlist', label: '心愿单', count: stats.wishlist, path: '/wishlist' },
+    { icon: 'history', label: '喝过的', count: stats.drank, path: '/wishlist' },
+    { icon: 'likes', label: '获赞', count: stats.likes, path: '/' },
   ];
 
   const settingsItems = [
-    { icon: 'settings', label: '设置' },
+    { icon: 'settings', label: '编辑资料', path: '/profile/edit' },
     { icon: 'invite', label: '邀请好友' },
     { icon: 'feedback', label: '意见反馈' },
     { icon: 'about', label: '关于' },
@@ -102,6 +142,14 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleSettingsClick = (item: { path?: string; isLogout?: boolean }) => {
+    if (item.isLogout) {
+      handleLogout();
+    } else if (item.path) {
+      navigate(item.path);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-cream pb-20">
       <header className="sticky top-0 bg-white z-40 px-4">
@@ -126,7 +174,7 @@ const Profile: React.FC = () => {
               
               <div className="flex gap-6 mt-3">
                 {menuItems.map((item) => (
-                  <div key={item.label} className="text-center">
+                  <div key={item.label} className="text-center" onClick={() => item.path && navigate(item.path)}>
                     <p className="text-lg font-semibold text-text-primary">
                       {formatNumber(item.count)}
                     </p>
@@ -142,14 +190,14 @@ const Profile: React.FC = () => {
           {settingsItems.map((item) => (
             <button
               key={item.label}
-              onClick={item.isLogout ? handleLogout : undefined}
+              onClick={() => handleSettingsClick(item)}
               className={`w-full flex items-center justify-between px-4 py-4 hover:bg-bg-gray transition-colors ${item.isLogout ? 'text-red-500' : ''}`}
             >
               <div className="flex items-center gap-3">
                 <div className={item.isLogout ? 'text-red-500' : 'text-text-gray'}>{renderIcon(item.icon)}</div>
                 <span className={item.isLogout ? 'text-red-500' : 'text-text-primary'}>{item.label}</span>
               </div>
-              {!item.isLogout && (
+              {!item.isLogout && item.path && (
                 <svg className="w-5 h-5 text-text-gray" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M9 18l6-6-6-6" />
                 </svg>

@@ -34,6 +34,11 @@ export const API = {
     update: (id: string) => `${API_BASE_URL}/api/wishlists/${id}`,
     delete: (id: string) => `${API_BASE_URL}/api/wishlists/${id}`,
   },
+  follows: {
+    list: `${API_BASE_URL}/api/follows`,
+    create: `${API_BASE_URL}/api/follows`,
+    delete: `${API_BASE_URL}/api/follows`,
+  },
 };
 
 export const getAuthHeaders = () => {

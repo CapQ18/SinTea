@@ -92,3 +92,13 @@ CREATE TABLE likes (
   FOREIGN KEY (feedId) REFERENCES feeds(id),
   UNIQUE(userId, feedId)
 );
+
+CREATE TABLE follows (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER NOT NULL,
+  targetUserId INTEGER NOT NULL,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES users(id),
+  FOREIGN KEY (targetUserId) REFERENCES users(id),
+  UNIQUE(userId, targetUserId)
+);

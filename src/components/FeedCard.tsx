@@ -6,6 +6,7 @@ interface FeedCardProps {
   onUserClick?: (userId: number) => void;
   onCardClick?: (itemId: number) => void;
   onImageClick?: (images: string[], index: number) => void;
+  onFollow?: (userId: number, isFollowing: boolean) => void;
 }
 
 const FeedCard: React.FC<FeedCardProps> = ({
@@ -13,6 +14,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
   onUserClick,
   onCardClick,
   onImageClick,
+  onFollow,
 }) => {
   const [isLiked, setIsLiked] = useState(item.isLiked);
   const [likes, setLikes] = useState(item.likes);
@@ -208,13 +210,15 @@ const FeedCard: React.FC<FeedCardProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              onFollow?.(item.user.id, item.user.isFollowing);
             }}
-            className="text-text-gray hover:text-primary transition-colors"
+            className={`px-3 py-1 text-xs font-medium rounded-button transition-all ${
+              item.user.isFollowing
+                ? 'bg-bg-gray text-text-gray'
+                : 'btn-primary'
+            }`}
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
-            </svg>
+            {item.user.isFollowing ? '已关注' : '+ 关注'}
           </button>
         </div>
 

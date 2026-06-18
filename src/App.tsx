@@ -5,6 +5,7 @@ import FeedPost from './pages/FeedPost';
 import FeedDetail from './pages/FeedDetail';
 import Wishlist from './pages/Wishlist';
 import Profile from './pages/Profile';
+import ProfileEdit from './pages/ProfileEdit';
 import Discover from './pages/Discover';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -72,6 +73,11 @@ const AppContent: React.FC = () => {
         <Route path="/profile" element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/edit" element={
+          <ProtectedRoute>
+            <ProfileEdit />
           </ProtectedRoute>
         } />
       </Routes>

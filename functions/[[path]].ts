@@ -160,6 +160,34 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       return jsonResponse({ success: true, user });
     }
 
+    // 更新用户资料
+    if (path === '/api/users' && method === 'PUT') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const token = authHeader.replace('Bearer ', '');
+      const payload = verifyToken(token);
+
+      if (!payload) {
+        return jsonResponse({ success: false, message: '未授权' }, 401);
+      }
+
+      const body = await request.json() as any;
+      const { nickname, avatar, bio } = body;
+
+      const result = await env.DB.prepare(
+        'UPDATE users SET nickname = COALESCE(?, nickname), avatar = COALESCE(?, avatar), bio = COALESCE(?, bio) WHERE id = ?'
+      ).bind(nickname || null, avatar || null, bio || null, payload.id).run();
+
+      if (result.changes === 0) {
+        return jsonResponse({ success: false, message: '更新失败' }, 400);
+      }
+
+      const updatedUser = await env.DB.prepare(
+        'SELECT id, username, email, nickname, avatar, bio FROM users WHERE id = ?'
+      ).bind(payload.id).first();
+
+      return jsonResponse({ success: true, user: updatedUser });
+    }
+
     // 用户列表
     if (path === '/api/users' && method === 'GET') {
       const results = await env.DB.prepare(
@@ -179,27 +207,27 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         1: [
           'https://images.unsplash.com/photo-1558857561-c7e2c2d36b0a?w=400',
           'https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400',
-          'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400',
+          'https://images.unsplash.com/photo-1519915856044-a9d5f009b550?w=400',
         ],
         2: [
           'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400',
           'https://images.unsplash.com/photo-1571805341302-f85782f80349?w=400',
-          'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=400',
+          'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=400',
         ],
         3: [
-          'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400',
-          'https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400',
-          'https://images.unsplash.com/photo-1558857561-c7e2c2d36b0a?w=400',
+          'https://images.unsplash.com/photo-1589291383932-99b251156426?w=400',
+          'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400',
+          'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400',
         ],
         4: [
           'https://images.unsplash.com/photo-1571805341302-f85782f80349?w=400',
-          'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=400',
-          'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400',
+          'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
+          'https://images.unsplash.com/photo-1544025162-d76694265947?w=400',
         ],
         5: [
+          'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=400',
           'https://images.unsplash.com/photo-1558857561-c7e2c2d36b0a?w=400',
-          'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400',
-          'https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400',
+          'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400',
         ],
       };
 
@@ -360,6 +388,124 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       ).bind(payload.id, shopName, drinkName, notes || '').run();
 
       return jsonResponse({ success: true, wishlistId: Number(result.lastInsertRowid) });
+    }
+
+    // 更新心愿单（标记已喝）
+    const wishlistIdMatch = path.match(/^\/api\/wishlists\/(\d+)$/);
+    if (wishlistIdMatch && method === 'PUT') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const token = authHeader.replace('Bearer ', '');
+      const payload = verifyToken(token);
+
+      if (!payload) {
+        return jsonResponse({ success: false, message: '请先登录' }, 401);
+      }
+
+      const wishlistId = parseInt(wishlistIdMatch[1]);
+      const body = await request.json() as any;
+      const { isDrank } = body;
+
+      const result = await env.DB.prepare(
+        'UPDATE wishlists SET isDrank = ? WHERE id = ? AND userId = ?'
+      ).bind(isDrank ? 1 : 0, wishlistId, payload.id).run();
+
+      if (result.changes === 0) {
+        return jsonResponse({ success: false, message: '更新失败' }, 400);
+      }
+
+      return jsonResponse({ success: true });
+    }
+
+    // 删除心愿单
+    if (wishlistIdMatch && method === 'DELETE') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const token = authHeader.replace('Bearer ', '');
+      const payload = verifyToken(token);
+
+      if (!payload) {
+        return jsonResponse({ success: false, message: '请先登录' }, 401);
+      }
+
+      const wishlistId = parseInt(wishlistIdMatch[1]);
+
+      const result = await env.DB.prepare(
+        'DELETE FROM wishlists WHERE id = ? AND userId = ?'
+      ).bind(wishlistId, payload.id).run();
+
+      if (result.changes === 0) {
+        return jsonResponse({ success: false, message: '删除失败' }, 400);
+      }
+
+      return jsonResponse({ success: true });
+    }
+
+    // 添加关注
+    if (path === '/api/follows' && method === 'POST') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const token = authHeader.replace('Bearer ', '');
+      const payload = verifyToken(token);
+
+      if (!payload) {
+        return jsonResponse({ success: false, message: '请先登录' }, 401);
+      }
+
+      const body = await request.json() as any;
+      const { targetUserId } = body;
+
+      if (!targetUserId || payload.id === targetUserId) {
+        return jsonResponse({ success: false, message: '无效的关注目标' }, 400);
+      }
+
+      const existing = await env.DB.prepare(
+        'SELECT id FROM follows WHERE userId = ? AND targetUserId = ?'
+      ).bind(payload.id, targetUserId).first();
+
+      if (existing) {
+        return jsonResponse({ success: false, message: '已关注' }, 400);
+      }
+
+      await env.DB.prepare(
+        'INSERT INTO follows (userId, targetUserId) VALUES (?, ?)'
+      ).bind(payload.id, targetUserId).run();
+
+      return jsonResponse({ success: true });
+    }
+
+    // 取消关注
+    if (path === '/api/follows' && method === 'DELETE') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const token = authHeader.replace('Bearer ', '');
+      const payload = verifyToken(token);
+
+      if (!payload) {
+        return jsonResponse({ success: false, message: '请先登录' }, 401);
+      }
+
+      const body = await request.json() as any;
+      const { targetUserId } = body;
+
+      await env.DB.prepare(
+        'DELETE FROM follows WHERE userId = ? AND targetUserId = ?'
+      ).bind(payload.id, targetUserId).run();
+
+      return jsonResponse({ success: true });
+    }
+
+    // 获取关注列表
+    if (path === '/api/follows' && method === 'GET') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const token = authHeader.replace('Bearer ', '');
+      const payload = verifyToken(token);
+
+      if (!payload) {
+        return jsonResponse({ success: false, message: '请先登录' }, 401);
+      }
+
+      const results = await env.DB.prepare(
+        'SELECT f.targetUserId, u.username, u.nickname, u.avatar FROM follows f JOIN users u ON f.targetUserId = u.id WHERE f.userId = ?'
+      ).bind(payload.id).all();
+
+      return jsonResponse({ success: true, follows: results.results });
     }
 
     // 点赞

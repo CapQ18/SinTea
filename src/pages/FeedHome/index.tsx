@@ -29,9 +29,17 @@ const FeedHome: React.FC = () => {
 
   const loadPosts = async () => {
     try {
-      const data = await request<{ success: boolean; feeds?: any[] }>(API.feeds.list);
-      if (data.success && data.feeds) {
-        const apiPosts: FeedItem[] = data.feeds.map((feed: any) => ({
+      const [feedData, followData] = await Promise.all([
+        request<{ success: boolean; feeds?: any[] }>(API.feeds.list),
+        request<{ success: boolean; follows?: any[] }>(API.follows.list),
+      ]);
+
+      const followedIds = followData.success && followData.follows
+        ? followData.follows.map(f => String(f.targetUserId))
+        : [];
+
+      if (feedData.success && feedData.feeds) {
+        const apiPosts: FeedItem[] = feedData.feeds.map((feed: any) => ({
           id: Number(feed.id),
           userId: String(feed.userId),
           user: {
@@ -39,7 +47,7 @@ const FeedHome: React.FC = () => {
             avatar: feed.avatar || '',
             name: feed.nickname || feed.username || '用户',
             title: '',
-            isFollowing: false,
+            isFollowing: followedIds.includes(String(feed.userId)),
           },
           tag: feed.drinkName ? `#${feed.drinkName}` : '',
           type: feed.type as 'recommend' | 'neutral' | 'warning' || 'neutral',
@@ -153,6 +161,25 @@ const FeedHome: React.FC = () => {
     navigate(`/detail/${id}`);
   };
 
+  const handleFollow = async (userId: number, isFollowing: boolean) => {
+    try {
+      if (isFollowing) {
+        await request<{ success: boolean }>(API.follows.delete, {
+          method: 'DELETE',
+          body: JSON.stringify({ targetUserId: userId }),
+        });
+      } else {
+        await request<{ success: boolean }>(API.follows.create, {
+          method: 'POST',
+          body: JSON.stringify({ targetUserId: userId }),
+        });
+      }
+      loadPosts();
+    } catch {
+      console.error('Follow failed');
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-cream">
       <div className="flex-shrink-0 bg-white">
@@ -191,13 +218,14 @@ const FeedHome: React.FC = () => {
 
         <div className="space-y-3">
           {displayedFeeds.map((item) => (
-            <FeedCard
-              key={item.id}
-              item={item}
-              onImageClick={handleImageClick}
-              onCardClick={handleCardClick}
-            />
-          ))}
+          <FeedCard
+            key={item.id}
+            item={item}
+            onImageClick={handleImageClick}
+            onCardClick={handleCardClick}
+            onFollow={handleFollow}
+          />
+        ))}
         </div>
 
         {isLoadingMore && (
