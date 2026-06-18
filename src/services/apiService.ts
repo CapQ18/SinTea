@@ -1,6 +1,6 @@
 const isProduction = import.meta.env.PROD;
 const API_BASE_URL = isProduction 
-  ? 'https://sintea-api.xxx.workers.dev' 
+  ? 'https://sintea-api.1666531256.workers.dev' 
   : 'http://localhost:8787';
 
 export const API = {
