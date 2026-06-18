@@ -1,8 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { feedMockData, Comment } from '../../types/feed';
+import { Comment } from '../../types/feed';
+import { API, request } from '../../services/apiService';
 
-interface MilkTeaDNA {
+interface FeedDetailItem {
+  id: number;
+  userId: number;
+  user: {
+    id: number;
+    avatar: string;
+    name: string;
+    title?: string;
+    isFollowing: boolean;
+  };
+  tag: string;
+  type: 'recommend' | 'neutral' | 'warning';
+  content: string;
+  images: string[];
+  date: string;
+  comments: Comment[];
+  likes: number;
+  isLiked: boolean;
+  shop: string;
+  rating: number;
+  location: string;
   sweetness: number;
   tea: number;
   milk: number;
@@ -15,37 +36,76 @@ const FeedDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'content' | 'comments'>('content');
-  const [item] = useState(() => feedMockData.find(f => f.id === Number(id)) || feedMockData[0]);
-  const [isFollowing, setIsFollowing] = useState(item.user.isFollowing || false);
-  const [isLiked, setIsLiked] = useState(item.isLiked);
-  const [likes, setLikes] = useState(item.likes);
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: 1,
-      user: { avatar: 'https://i.pravatar.cc/150?img=11', name: '奶茶新手' },
-      content: '是咧我也是这么觉得，而且而且，而且什么呢我就是来凑着字数的我也不知道啊，感觉还不错，爱喝爱喝被安利到了谢谢奶茶达人',
-      date: '1分钟前',
-      likes: 999,
-    },
-    {
-      id: 2,
-      user: { avatar: 'https://i.pravatar.cc/150?img=12', name: '饮茶小能手' },
-      content: '是咧我也是这么觉得，而且而且，而且什么呢我就是来凑着字数的我也不知道啊，感觉还不错，爱喝爱喝被安利到了谢谢奶茶达人',
-      date: '1分钟前',
-      likes: 999,
-    },
-  ]);
+  const [item, setItem] = useState<FeedDetailItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likes, setLikes] = useState(0);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
 
-  const milkTeaDNA: MilkTeaDNA = {
-    sweetness: 70,
-    tea: 60,
-    milk: 80,
-    taste: 75,
-    coolness: 50,
-    appearance: 85,
+  useEffect(() => {
+    loadDetail();
+  }, [id]);
+
+  const loadDetail = async () => {
+    setIsLoading(true);
+    try {
+      const response = await request<{ success: boolean; feed?: any }>(API.feeds.get(id || '0'));
+      if (response.success && response.feed) {
+        const feed = response.feed;
+        setItem({
+          id: Number(feed.id),
+          userId: Number(feed.userId),
+          user: {
+            id: Number(feed.userId),
+            avatar: feed.avatar || '',
+            name: feed.nickname || feed.username || '用户',
+            title: '',
+            isFollowing: false,
+          },
+          tag: feed.drinkName ? `#${feed.drinkName}` : '',
+          type: feed.type as 'recommend' | 'neutral' | 'warning' || 'neutral',
+          content: feed.content || '',
+          images: feed.images || [],
+          date: feed.createdAt ? new Date(feed.createdAt).toLocaleDateString('zh-CN') : new Date().toLocaleDateString('zh-CN'),
+          comments: (feed.comments || []).map((c: any) => ({
+            id: Number(c.id),
+            user: { avatar: c.avatar || '', name: c.nickname || c.username || '用户' },
+            content: c.content || '',
+            date: c.createdAt ? new Date(c.createdAt).toLocaleDateString('zh-CN') : '刚刚',
+            likes: c.likes || 0,
+          })),
+          likes: feed.likes || 0,
+          isLiked: false,
+          shop: feed.shopName || '',
+          rating: feed.rating || 3,
+          location: feed.location || '',
+          sweetness: feed.sweetness || 50,
+          tea: feed.tea || 50,
+          milk: feed.milk || 50,
+          taste: feed.taste || 50,
+          coolness: feed.coolness || 50,
+          appearance: feed.appearance || 50,
+        });
+        setIsFollowing(false);
+        setIsLiked(false);
+        setLikes(feed.likes || 0);
+        setComments((feed.comments || []).map((c: any) => ({
+          id: Number(c.id),
+          user: { avatar: c.avatar || '', name: c.nickname || c.username || '用户' },
+          content: c.content || '',
+          date: c.createdAt ? new Date(c.createdAt).toLocaleDateString('zh-CN') : '刚刚',
+          likes: c.likes || 0,
+        })));
+      }
+    } catch {
+      console.error('Failed to load feed detail');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const formatNumber = (num: number) => {
@@ -58,8 +118,24 @@ const FeedDetail: React.FC = () => {
     setLikes(isLiked ? likes - 1 : likes + 1);
   };
 
-  const handleFollow = () => {
-    setIsFollowing(!isFollowing);
+  const handleFollow = async () => {
+    if (!item) return;
+    try {
+      if (isFollowing) {
+        await request<{ success: boolean }>(API.follows.delete, {
+          method: 'DELETE',
+          body: JSON.stringify({ targetUserId: item.userId }),
+        });
+      } else {
+        await request<{ success: boolean }>(API.follows.create, {
+          method: 'POST',
+          body: JSON.stringify({ targetUserId: item.userId }),
+        });
+      }
+      setIsFollowing(!isFollowing);
+    } catch {
+      console.error('Follow failed');
+    }
   };
 
   const handleSendComment = () => {
@@ -67,7 +143,7 @@ const FeedDetail: React.FC = () => {
     setComments([
       {
         id: Date.now(),
-        user: { avatar: 'https://i.pravatar.cc/150?img=0', name: '我' },
+        user: { avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=me', name: '我' },
         content: newComment,
         date: '刚刚',
         likes: 0,
@@ -83,8 +159,10 @@ const FeedDetail: React.FC = () => {
   };
 
   const renderRadarChart = () => {
+    if (!item) return null;
+
     const labels = ['甜度', '茶味', '奶味', '口感', '凉度', '颜值'];
-    const values = [milkTeaDNA.sweetness, milkTeaDNA.tea, milkTeaDNA.milk, milkTeaDNA.taste, milkTeaDNA.coolness, milkTeaDNA.appearance];
+    const values = [item.sweetness, item.tea, item.milk, item.taste, item.coolness, item.appearance];
     const centerX = 100;
     const centerY = 100;
     const radius = 60;
@@ -171,7 +249,7 @@ const FeedDetail: React.FC = () => {
   };
 
   const renderImages = () => {
-    if (item.images.length === 0) return null;
+    if (!item || item.images.length === 0) return null;
 
     if (item.images.length === 1) {
       return (
@@ -237,6 +315,35 @@ const FeedDetail: React.FC = () => {
         return '中肯客观';
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!item) {
+    return (
+      <div className="min-h-screen bg-cream flex flex-col">
+        <header className="bg-white px-4 py-3 flex items-center gap-3 border-b border-border-light">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 flex items-center justify-center text-text-secondary rounded-full hover:bg-bg-gray transition-colors"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-lg font-semibold text-text-primary">评价详情</h1>
+        </header>
+        <div className="flex-1 flex items-center justify-center text-text-gray">
+          动态不存在
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-cream flex flex-col">
@@ -390,7 +497,7 @@ const FeedDetail: React.FC = () => {
                         </div>
                         <p className="mt-1.5 text-sm text-text-secondary">{comment.content}</p>
                         <div className="mt-2 flex items-center gap-2">
-                          <button className="text-xs text-text-gray hover:text-warning transition-colors">
+                          <button className="text-xs text-text-gray hover:text-primary transition-colors">
                             回复
                           </button>
                           <button className="flex items-center gap-1 text-xs text-text-gray hover:text-warning transition-colors">
@@ -399,9 +506,6 @@ const FeedDetail: React.FC = () => {
                             </svg>
                             <span>{formatNumber(comment.likes || 0)}</span>
                           </button>
-                        </div>
-                        <div className="mt-2 text-xs text-text-gray">
-                          <span className="cursor-pointer hover:text-primary transition-colors">展开999条回复</span>
                         </div>
                       </div>
                     </div>

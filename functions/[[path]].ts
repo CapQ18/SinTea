@@ -334,6 +334,38 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       return jsonResponse({ success: true, feeds: feedsWithData });
     }
 
+    // 动态详情
+    const feedsMatch = path.match(/^\/api\/feeds\/(\d+)$/);
+    if (feedsMatch && method === 'GET') {
+      const feedId = feedsMatch[1];
+      const result = await env.DB.prepare(
+        'SELECT f.*, u.username, u.nickname, u.avatar FROM feeds f JOIN users u ON f.userId = u.id WHERE f.id = ?'
+      ).bind(feedId).first();
+
+      if (!result) {
+        return jsonResponse({ success: false, message: '动态不存在' }, 404);
+      }
+
+      const feed = result as any;
+      const comments = await env.DB.prepare(
+        'SELECT c.*, u.username, u.nickname, u.avatar FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId = ? ORDER BY c.createdAt DESC'
+      ).bind(feedId).all();
+
+      const likeCount = await env.DB.prepare(
+        'SELECT COUNT(*) as count FROM likes WHERE feedId = ?'
+      ).bind(feedId).first();
+
+      return jsonResponse({
+        success: true,
+        feed: {
+          ...feed,
+          images: feed.images ? JSON.parse(feed.images) : [],
+          comments: comments.results,
+          likes: likeCount ? (likeCount as any).count : 0
+        }
+      });
+    }
+
     // 发布动态
     if (path === '/api/feeds' && method === 'POST') {
       const authHeader = request.headers.get('Authorization') || '';
