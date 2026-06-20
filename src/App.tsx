@@ -7,6 +7,7 @@ import Wishlist from './pages/Wishlist';
 import Profile from './pages/Profile';
 import ProfileEdit from './pages/ProfileEdit';
 import Discover from './pages/Discover';
+import ShopDetail from './pages/ShopDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NavBar from './components/NavBar';
@@ -78,6 +79,11 @@ const AppContent: React.FC = () => {
         <Route path="/profile/edit" element={
           <ProtectedRoute>
             <ProfileEdit />
+          </ProtectedRoute>
+        } />
+        <Route path="/shop/:id" element={
+          <ProtectedRoute>
+            <ShopDetail />
           </ProtectedRoute>
         } />
       </Routes>

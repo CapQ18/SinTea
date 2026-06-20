@@ -52,11 +52,27 @@ export function registerRoutes(router: Router): void {
       .bind(userId)
       .first()) as any;
 
+    // 计算口味画像（6维评分平均值）
+    const tasteProfile = (await db
+      .prepare(
+        'SELECT AVG(sweetness) as sweetness, AVG(tea) as tea, AVG(milk) as milk, AVG(taste) as taste, AVG(coolness) as coolness, AVG(appearance) as appearance FROM feeds WHERE userId = ?',
+      )
+      .bind(userId)
+      .first()) as any;
+
     return ok({
       user: {
         ...(user as any),
         feedsCount: feedCount?.count || 0,
         likesCount: likeCount?.count || 0,
+        tasteProfile: tasteProfile?.sweetness != null ? {
+          sweetness: Math.round(tasteProfile.sweetness),
+          tea: Math.round(tasteProfile.tea),
+          milk: Math.round(tasteProfile.milk),
+          taste: Math.round(tasteProfile.taste),
+          coolness: Math.round(tasteProfile.coolness),
+          appearance: Math.round(tasteProfile.appearance),
+        } : null,
       },
     });
   });

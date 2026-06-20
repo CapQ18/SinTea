@@ -19,6 +19,9 @@ interface Shop {
   priceRange: string;
 }
 
+// 通用占位图，店铺没有图片时使用
+const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1558857561-c7e2c2d36b0a?w=400';
+
 const Discover: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('shops');
@@ -26,138 +29,59 @@ const Discover: React.FC = () => {
   const [nearbyShops, setNearbyShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
-
-  const mockShops: Shop[] = [
-    {
-      id: '1',
-      name: '茶百道',
-      brand: '茶百道',
-      images: [
-        '/images/856aa34131c166c61ec6951e596c0d12.jpg',
-        '/images/c24c68ad9368971d227d5a0439e229a6.jpg',
-        '/images/735ae66aea25d12fe267f84ea7a24bba.jpg',
-      ],
-      description: '创立于2008年，主打鲜果茶和创意奶茶，以杨枝甘露和豆乳玉麒麟闻名。',
-      address: '上海市静安区南京西路1266号',
-      latitude: 31.2397,
-      longitude: 121.4998,
-      rating: 4.7,
-      priceRange: '$$'
-    },
-    {
-      id: '2',
-      name: '茶颜悦色',
-      brand: '茶颜悦色',
-      images: [
-        '/images/76fbb72dc2fee8cc6bebfd437e346232.jpg',
-        '/images/139deb276805c2024f1d4c65a832472b2b52be1c62f7190.jpg',
-        '/images/d0849ec52e1a0509b164c7d8ee94bf27.jpg',
-      ],
-      description: '源自长沙的新中式茶饮品牌，以幽兰拿铁和声声乌龙为招牌，茶香浓郁。',
-      address: '上海市黄浦区淮海中路999号',
-      latitude: 31.2346,
-      longitude: 121.4854,
-      rating: 4.8,
-      priceRange: '$$'
-    },
-    {
-      id: '3',
-      name: '喜茶',
-      brand: '喜茶',
-      images: [
-        '/images/f0dcdcb42a597722303f37931c3d54f8.jpg',
-        '/images/d494e22e02ecabe7a0635767a488c616.jpg',
-        '/images/73c5db3391954742b2b52be1c62f7190.jpg',
-      ],
-      description: '创立于2012年，以芝士奶盖茶和多肉葡萄闻名，引领新式茶饮潮流。',
-      address: '上海市浦东新区陆家嘴环路1000号',
-      latitude: 31.2397,
-      longitude: 121.5079,
-      rating: 4.6,
-      priceRange: '$$'
-    },
-    {
-      id: '4',
-      name: '一点点',
-      brand: '一点点',
-      images: [
-        '/images/26703b2b90e8a1d7de66c4ebc3e7298a.jpg',
-        '/images/ac1e95b49265b2b8165e72ae3f3f5827.jpg',
-        '/images/b7c319a2dc2e1ee5202cc584e734148a.jpg',
-      ],
-      description: '台湾连锁奶茶品牌，以丰富的配料选择和实惠的价格深受喜爱。',
-      address: '上海市徐汇区漕溪北路88号',
-      latitude: 31.1987,
-      longitude: 121.4369,
-      rating: 4.5,
-      priceRange: '$'
-    },
-    {
-      id: '5',
-      name: '奈雪的茶',
-      brand: '奈雪的茶',
-      images: [
-        '/images/874f4e7528ae465193c34c9055185559.jpg',
-        '/images/856aa34131c166c61ec6951e596c0d12.jpg',
-        '/images/c24c68ad9368971d227d5a0439e229a6.jpg',
-      ],
-      description: '以霸气橙子和草莓魔法棒闻名，茶饮与软欧包的完美结合。',
-      address: '上海市长宁区虹桥路1号',
-      latitude: 31.2167,
-      longitude: 121.3964,
-      rating: 4.7,
-      priceRange: '$$'
-    },
-  ];
+  const [fetchError, setFetchError] = useState('');
 
   const fetchShops = async () => {
+    setFetchError('');
     try {
       const data = await request<{ success: boolean; shops?: Shop[] }>(API.shops.list);
-      if (data.success && data.shops) {
+      if (data.success && data.shops && data.shops.length > 0) {
         setShops(data.shops);
+      } else {
+        setFetchError('暂无店铺数据');
       }
     } catch {
-      setShops(mockShops);
+      setFetchError('加载店铺失败，请检查网络');
     }
   };
 
   const fetchNearbyShops = async () => {
     setLoading(true);
     setLocationError('');
+    setFetchError('');
 
     try {
       const position = await getCurrentPosition();
-      
+
       try {
         const data = await request<{ success: boolean; shops?: Shop[] }>(
-          `${API.shops.nearby}?lat=${position.latitude}&lng=${position.longitude}&radius=10`
+          `${API.shops.nearby}?lat=${position.latitude}&lng=${position.longitude}&radius=50`
         );
         if (data.success && data.shops && data.shops.length > 0) {
           setNearbyShops(data.shops);
         } else {
-          const shopsWithDistance = mockShops.map(shop => ({
-            ...shop,
-            distance: shop.latitude && shop.longitude
-              ? calculateDistance(position.latitude, position.longitude, shop.latitude, shop.longitude)
-              : undefined
-          })).filter(shop => shop.distance !== undefined && shop.distance <= 10)
-            .sort((a, b) => (a.distance || 0) - (b.distance || 0));
-          setNearbyShops(shopsWithDistance);
+          // 附近没有店铺，尝试展示全部店铺并计算距离
+          const allData = await request<{ success: boolean; shops?: Shop[] }>(API.shops.list);
+          if (allData.success && allData.shops) {
+            const withDistance = allData.shops
+              .map(shop => ({
+                ...shop,
+                distance: shop.latitude && shop.longitude
+                  ? calculateDistance(position.latitude, position.longitude, shop.latitude, shop.longitude)
+                  : undefined,
+              }))
+              .sort((a, b) => (a.distance || 9999) - (b.distance || 9999));
+            setNearbyShops(withDistance);
+          } else {
+            setFetchError('附近暂无店铺');
+          }
         }
       } catch {
-        const shopsWithDistance = mockShops.map(shop => ({
-          ...shop,
-          distance: shop.latitude && shop.longitude
-            ? calculateDistance(position.latitude, position.longitude, shop.latitude, shop.longitude)
-            : undefined
-        })).filter(shop => shop.distance !== undefined && shop.distance <= 10)
-          .sort((a, b) => (a.distance || 0) - (b.distance || 0));
-        setNearbyShops(shopsWithDistance);
+        setFetchError('加载附近店铺失败');
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '定位失败';
       setLocationError(errorMsg);
-      setNearbyShops(mockShops);
     } finally {
       setLoading(false);
     }
@@ -213,7 +137,7 @@ const Discover: React.FC = () => {
             </div>
           ) : locationError ? (
             <div className="text-sm text-orange-500">
-              ⚠️ {locationError}，显示所有店铺
+              ⚠️ {locationError}，请允许浏览器定位后重试
             </div>
           ) : nearbyShops.length > 0 && nearbyShops[0].distance !== undefined ? (
             <div className="text-sm text-text-gray">
@@ -223,59 +147,82 @@ const Discover: React.FC = () => {
         </div>
       )}
 
+      {fetchError && (
+        <div className="px-4 py-3 bg-orange-50 text-orange-600 text-sm text-center">
+          {fetchError}
+        </div>
+      )}
+
       <div className="px-4 mt-3 space-y-4">
-        {displayShops.map((shop) => (
-          <div
-            key={shop.id}
-            className="bg-white rounded-lg overflow-hidden"
-            onClick={() => navigate(`/shop/${shop.id}`)}
-          >
-            <div className="p-4 flex justify-between items-center">
-              <div>
-                <span className="text-sm text-text-primary font-medium">#{shop.name}</span>
-                {shop.brand && shop.brand !== shop.name && (
-                  <span className="ml-2 text-xs text-text-gray">{shop.brand}</span>
+        {displayShops.map((shop) => {
+          const images = shop.images && shop.images.length > 0 ? shop.images : [PLACEHOLDER_IMAGE];
+          return (
+            <div
+              key={shop.id}
+              className="bg-white rounded-lg overflow-hidden active:scale-[0.98] transition-transform"
+              onClick={() => navigate(`/shop/${shop.id}`)}
+            >
+              <div className="p-4 flex justify-between items-center">
+                <div>
+                  <span className="text-sm text-text-primary font-medium">#{shop.name}</span>
+                  {shop.brand && shop.brand !== shop.name && (
+                    <span className="ml-2 text-xs text-text-gray">{shop.brand}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {shop.rating > 0 && (
+                    <span className="text-xs text-yellow-500">⭐ {shop.rating}</span>
+                  )}
+                  {activeTab === 'nearby' && shop.distance !== undefined && (
+                    <span className="text-xs text-primary font-medium">
+                      {formatDistance(shop.distance)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="px-4">
+                <div className="flex gap-1">
+                  {images.slice(0, 3).map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="flex-1 aspect-square rounded-lg overflow-hidden relative bg-gray-100"
+                    >
+                      <img
+                        src={img}
+                        alt={`${shop.name} 图片${idx + 1}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE;
+                        }}
+                      />
+                      {images.length > 3 && idx === 2 && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-xs">
+                          共{images.length}张
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="px-4 py-3">
+                <p className="text-sm text-text-secondary line-clamp-2">{shop.description}</p>
+                {shop.address && (
+                  <p className="text-xs text-text-gray mt-1">📍 {shop.address}</p>
+                )}
+                {shop.priceRange && (
+                  <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-bg-gray rounded">
+                    {shop.priceRange}
+                  </span>
                 )}
               </div>
-              {activeTab === 'nearby' && shop.distance !== undefined && (
-                <span className="text-xs text-primary font-medium">
-                  {formatDistance(shop.distance)}
-                </span>
-              )}
             </div>
-            
-            <div className="px-4">
-              <div className="flex gap-1">
-                {shop.images.slice(0, 3).map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="flex-1 aspect-square rounded-lg overflow-hidden relative"
-                  >
-                    <img
-                      src={img}
-                      alt={`店铺图片${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    {shop.images.length > 3 && idx === 2 && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-xs">
-                        共{shop.images.length}张
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+          );
+        })}
 
-            <div className="px-4 py-3">
-              <p className="text-sm text-text-secondary line-clamp-2">{shop.description}</p>
-              {shop.address && (
-                <p className="text-xs text-text-gray mt-1">{shop.address}</p>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {displayShops.length === 0 && !loading && (
+        {displayShops.length === 0 && !loading && !fetchError && (
           <div className="text-center py-12 text-text-gray">
             <p className="text-lg mb-2">暂无店铺</p>
             <p className="text-sm">快来添加第一家奶茶店吧！</p>

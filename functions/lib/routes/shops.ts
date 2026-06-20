@@ -24,8 +24,16 @@ function haversineDistance(
   return Math.round(R * c * 100) / 100;
 }
 
-// 获取店铺默认图片（临时方案，Phase 3 改为数据库存储）
-function getDefaultImages(shopId: number): string[] {
+// 获取店铺图片：优先数据库，fallback 硬编码
+function getShopImages(shop: any): string[] {
+  if (shop.images) {
+    try {
+      const parsed = JSON.parse(shop.images);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch { /* fall through */ }
+  }
+  return getDefaultImages(shop.id);
+}
   const map: Record<number, string[]> = {
     1: [
       'https://images.unsplash.com/photo-1558857561-c7e2c2d36b0a?w=400',
@@ -63,14 +71,14 @@ export function registerRoutes(router: Router): void {
 
     const results = await db
       .prepare(
-        'SELECT id, name, brand, description, address, latitude, longitude, rating, priceRange FROM shops',
+        'SELECT id, name, brand, description, address, latitude, longitude, rating, priceRange, images FROM shops',
       )
       .all();
 
     const shops = (results.results as any[]).map((shop) => ({
       ...shop,
       id: String(shop.id),
-      images: getDefaultImages(shop.id),
+      images: getShopImages(shop),
     }));
 
     return ok({ shops });
@@ -90,7 +98,7 @@ export function registerRoutes(router: Router): void {
 
     const results = await db
       .prepare(
-        'SELECT id, name, brand, description, address, latitude, longitude, rating, priceRange FROM shops',
+        'SELECT id, name, brand, description, address, latitude, longitude, rating, priceRange, images FROM shops',
       )
       .all();
 
@@ -104,7 +112,7 @@ export function registerRoutes(router: Router): void {
           ...shop,
           id: String(shop.id),
           distance,
-          images: getDefaultImages(shop.id),
+          images: getShopImages(shop),
         };
       })
       .filter((shop) => shop.distance !== null && shop.distance <= radius)
@@ -121,7 +129,7 @@ export function registerRoutes(router: Router): void {
 
     const shop = (await db
       .prepare(
-        'SELECT id, name, brand, description, address, latitude, longitude, rating, priceRange FROM shops WHERE id = ?',
+        'SELECT id, name, brand, description, address, latitude, longitude, rating, priceRange, images FROM shops WHERE id = ?',
       )
       .bind(shopId)
       .first()) as any;
@@ -141,7 +149,7 @@ export function registerRoutes(router: Router): void {
       shop: {
         ...shop,
         id: String(shop.id),
-        images: getDefaultImages(shop.id),
+        images: getShopImages(shop),
       },
       drinks: drinks.results,
     });
@@ -170,16 +178,18 @@ export function registerRoutes(router: Router): void {
 
     const db = env.DB;
     const body: any = await request.json();
-    const { name, brand, description, address, latitude, longitude, rating, priceRange } =
+    const { name, brand, description, address, latitude, longitude, rating, priceRange, images } =
       body;
 
     if (!name) {
       return error('店铺名称不能为空', 400);
     }
 
+    const imagesJson = images ? JSON.stringify(images) : null;
+
     const result = await db
       .prepare(
-        'INSERT INTO shops (name, brand, description, address, latitude, longitude, rating, priceRange) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO shops (name, brand, description, address, latitude, longitude, rating, priceRange, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       )
       .bind(
         name,
@@ -190,6 +200,7 @@ export function registerRoutes(router: Router): void {
         longitude || null,
         rating || 0,
         priceRange || '',
+        imagesJson,
       )
       .run();
 

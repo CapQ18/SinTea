@@ -7,17 +7,22 @@ import { requireAuth } from '../middleware';
 import { createNotification } from './notifications';
 
 export function registerRoutes(router: Router): void {
-  // GET /api/feeds — 动态列表（支持分页）
+  // GET /api/feeds — 动态列表（支持分页和排序）
   router.get('/api/feeds', async (request, env) => {
     const db = env.DB;
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50);
     const offset = (page - 1) * limit;
+    const sort = url.searchParams.get('sort') || 'new'; // 'new' | 'hot'
+
+    const orderBy = sort === 'hot'
+      ? 'f.likes DESC, f.createdAt DESC'
+      : 'f.createdAt DESC';
 
     const results = await db
       .prepare(
-        'SELECT f.*, u.username, u.nickname, u.avatar FROM feeds f JOIN users u ON f.userId = u.id ORDER BY f.createdAt DESC LIMIT ? OFFSET ?',
+        `SELECT f.*, u.username, u.nickname, u.avatar FROM feeds f JOIN users u ON f.userId = u.id ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
       )
       .bind(limit, offset)
       .all();
@@ -55,6 +60,7 @@ export function registerRoutes(router: Router): void {
       total: countResult?.total || 0,
       page,
       limit,
+      sort,
       hasMore: offset + limit < (countResult?.total || 0),
     });
   });
@@ -233,7 +239,4 @@ export function registerRoutes(router: Router): void {
 
     return ok({ commentId: Number(result.lastInsertRowid) });
   });
-
-  // TODO Phase 2 — 动态排序支持
-  // GET /api/feeds?sort=hot → 按点赞数排序
 }

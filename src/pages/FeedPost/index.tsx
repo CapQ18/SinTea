@@ -2,6 +2,36 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../../services/postService';
 
+// 图片压缩：限制尺寸和质量，转 JPEG base64，大幅减小体积
+function compressImage(file: File, maxWidth: number, quality: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('图片加载失败'));
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error('文件读取失败'));
+    reader.readAsDataURL(file);
+  });
+}
+
 type PostType = 'recommend' | 'neutral' | 'warning';
 
 interface MilkTeaDNA {
@@ -44,30 +74,29 @@ const FeedPost: React.FC = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    
+
     if (!files || files.length === 0) return;
-    
+
     if (images.length >= 6) {
       setErrorMessage('最多只能上传6张图片');
       return;
     }
 
     const file = files[0];
-    
+
     if (!file.type.startsWith('image/')) {
       setErrorMessage('请选择图片文件');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      setImages(prev => [...prev, result]);
-    };
-    reader.onerror = () => {
-      setErrorMessage('图片读取失败');
-    };
-    reader.readAsDataURL(file);
+    // 压缩图片后再转 base64，大幅减小体积
+    compressImage(file, 800, 0.7)
+      .then((compressed) => {
+        setImages(prev => [...prev, compressed]);
+      })
+      .catch(() => {
+        setErrorMessage('图片处理失败');
+      });
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
