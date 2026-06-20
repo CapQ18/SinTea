@@ -90,7 +90,7 @@ const FeedPost: React.FC = () => {
     }
 
     // 压缩图片后再转 base64，大幅减小体积
-    compressImage(file, 800, 0.7)
+    compressImage(file, 400, 0.5)
       .then((compressed) => {
         setImages(prev => [...prev, compressed]);
       })

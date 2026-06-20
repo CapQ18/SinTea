@@ -27,33 +27,43 @@ export function registerRoutes(router: Router): void {
       .bind(limit, offset)
       .all();
 
-    // 获取总数用于分页
-    const countResult = (await db
-      .prepare('SELECT COUNT(*) as total FROM feeds')
-      .first()) as any;
+	    // 获取总数用于分页
+	    const countResult = (await db
+	      .prepare('SELECT COUNT(*) as total FROM feeds')
+	      .first()) as any;
 
-    const feedsWithData = await Promise.all(
-      (results.results as any[]).map(async (feed: any) => {
-        const comments = await db
-          .prepare(
-            'SELECT c.*, u.username, u.nickname, u.avatar FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId = ? ORDER BY c.createdAt DESC',
-          )
-          .bind(feed.id)
-          .all();
+	    const feedsWithData = await Promise.all(
+	      (results.results as any[]).map(async (feed: any) => {
+	        const comments = await db
+	          .prepare(
+	            'SELECT c.*, u.username, u.nickname, u.avatar FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId = ? ORDER BY c.createdAt DESC',
+	          )
+	          .bind(feed.id)
+	          .all();
 
-        const likeCount = (await db
-          .prepare('SELECT COUNT(*) as count FROM likes WHERE feedId = ?')
-          .bind(feed.id)
-          .first()) as any;
+	        const likeCount = (await db
+	          .prepare('SELECT COUNT(*) as count FROM likes WHERE feedId = ?')
+	          .bind(feed.id)
+	          .first()) as any;
 
-        return {
-          ...feed,
-          images: feed.images ? JSON.parse(feed.images) : [],
-          comments: comments.results,
-          likes: likeCount?.count || 0,
-        };
-      }),
-    );
+	        // 列表不返回 base64 图片数据，只返回数量（减小响应体积）
+	        let imageCount = 0;
+	        if (feed.images) {
+	          try {
+	            const imgs = JSON.parse(feed.images);
+	            imageCount = Array.isArray(imgs) ? imgs.length : 0;
+	          } catch { /* ignore */ }
+	        }
+
+	        return {
+	          ...feed,
+	          images: undefined,     // 列表不传图片数据
+	          imageCount,            // 只传数量
+	          comments: comments.results,
+	          likes: likeCount?.count || 0,
+	        };
+	      }),
+	    );
 
     return ok({
       feeds: feedsWithData,
@@ -127,6 +137,18 @@ export function registerRoutes(router: Router): void {
     } = body;
 
     const imagesJson = images ? JSON.stringify(images) : null;
+
+    // 限制图片总大小：单张 base64 不超过 200KB，总计不超过 1MB
+    if (images && Array.isArray(images)) {
+      for (const img of images) {
+        if (typeof img === 'string' && img.length > 280000) { // ~200KB base64
+          return error('图片过大，请选择更小的图片或降低质量', 400);
+        }
+      }
+      if (imagesJson && imagesJson.length > 1200000) { // ~1MB total
+        return error('图片总大小超过限制，请减少图片数量', 400);
+      }
+    }
 
     const result = await db
       .prepare(
