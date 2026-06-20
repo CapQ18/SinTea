@@ -1,7 +1,4 @@
-const isProduction = import.meta.env.PROD;
-const API_BASE_URL = isProduction 
-  ? ''  // 生产环境使用同域名，Pages Functions 自动处理
-  : 'http://localhost:8787';
+const API_BASE_URL = '';  // 始终用相对路径：prod 走 Pages Functions，dev 走 Vite proxy
 
 export const API = {
   auth: {
