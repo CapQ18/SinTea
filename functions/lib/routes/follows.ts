@@ -4,6 +4,7 @@ import type { Router } from '../router';
 import type { Env } from '../env';
 import { ok, error } from '../response';
 import { requireAuth } from '../middleware';
+import { createNotification } from './notifications';
 
 export function registerRoutes(router: Router): void {
   // GET /api/follows — 我的关注列表
@@ -58,6 +59,9 @@ export function registerRoutes(router: Router): void {
       .prepare('INSERT INTO follows (userId, targetUserId) VALUES (?, ?)')
       .bind(auth.userId, targetUserId)
       .run();
+
+    // 通知被关注者
+    await createNotification(db, 'follow', targetUserId, auth.userId);
 
     return ok({});
   });

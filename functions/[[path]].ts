@@ -11,6 +11,9 @@ import { registerRoutes as registerFeeds } from './lib/routes/feeds';
 import { registerRoutes as registerShops } from './lib/routes/shops';
 import { registerRoutes as registerWishlists } from './lib/routes/wishlists';
 import { registerRoutes as registerFollows } from './lib/routes/follows';
+import { registerRoutes as registerChats } from './lib/routes/chats';
+import { registerRoutes as registerNotifications } from './lib/routes/notifications';
+import { registerRoutes as registerSearch } from './lib/routes/search';
 
 // 构建路由表
 const router = new Router();
@@ -35,6 +38,9 @@ registerFeeds(router);
 registerShops(router);
 registerWishlists(router);
 registerFollows(router);
+registerChats(router);
+registerNotifications(router);
+registerSearch(router);
 
 // Pages Functions handler
 export const onRequest: PagesFunction<Env> = async (context) => {

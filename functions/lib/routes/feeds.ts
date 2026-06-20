@@ -4,6 +4,7 @@ import type { Router } from '../router';
 import type { Env } from '../env';
 import { ok, error } from '../response';
 import { requireAuth } from '../middleware';
+import { createNotification } from './notifications';
 
 export function registerRoutes(router: Router): void {
   // GET /api/feeds — 动态列表（支持分页）
@@ -173,6 +174,15 @@ export function registerRoutes(router: Router): void {
         .bind(auth.userId, feedId)
         .run();
       liked = true;
+
+      // 通知动态作者
+      const feedAuthor = (await db
+        .prepare('SELECT userId FROM feeds WHERE id = ?')
+        .bind(feedId)
+        .first()) as any;
+      if (feedAuthor) {
+        await createNotification(db, 'like', feedAuthor.userId, auth.userId, { feedId });
+      }
     }
 
     // 同步更新 feeds 表的 likes 计数
@@ -208,6 +218,18 @@ export function registerRoutes(router: Router): void {
       .prepare('INSERT INTO comments (feedId, userId, content) VALUES (?, ?, ?)')
       .bind(feedId, auth.userId, content.trim())
       .run();
+
+    // 通知动态作者
+    const feedAuthor = (await db
+      .prepare('SELECT userId FROM feeds WHERE id = ?')
+      .bind(feedId)
+      .first()) as any;
+    if (feedAuthor) {
+      await createNotification(db, 'comment', feedAuthor.userId, auth.userId, {
+        feedId,
+        commentContent: content.trim().substring(0, 100),
+      });
+    }
 
     return ok({ commentId: Number(result.lastInsertRowid) });
   });
