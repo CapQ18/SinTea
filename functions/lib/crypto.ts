@@ -158,14 +158,21 @@ export async function verifyPassword(
   password: string,
   storedHash: string,
 ): Promise<boolean> {
+  // 兼容旧格式：纯 SHA-256 hex（不含 $ 分隔符）
+  if (!storedHash.includes('
+)) {
+    return verifyLegacyPassword(password, storedHash);
+  }
+
+  // 新格式：PBKDF2
   try {
-    const parts = storedHash.split('$');
+    const parts = storedHash.split('
+);
     if (parts.length !== 3) return false;
 
     const [iterationsStr, saltHex, hashHex] = parts;
     const iterations = parseInt(iterationsStr, 10);
 
-    // 将 salt 从 hex 转回 Uint8Array
     const salt = new Uint8Array(saltHex.length / 2);
     for (let i = 0; i < saltHex.length; i += 2) {
       salt[i / 2] = parseInt(saltHex.substring(i, i + 2), 16);
@@ -198,4 +205,20 @@ export async function verifyPassword(
   } catch {
     return false;
   }
+}
+
+// 旧格式验证：SHA-256(password + 'sintea_salt_2026')
+async function verifyLegacyPassword(password: string, storedHash: string): Promise<boolean> {
+  const data = encoder.encode(password + 'sintea_salt_2026');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashHex = Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  return hashHex === storedHash;
+}
+
+// 判断是否为旧格式密码（升级用）
+export function isLegacyHash(storedHash: string): boolean {
+  return !storedHash.includes('
+);
 }

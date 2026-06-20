@@ -3,7 +3,7 @@
 import type { Router } from '../router';
 import type { Env } from '../env';
 import { ok, error } from '../response';
-import { hashPassword, verifyPassword, generateToken } from '../crypto';
+import { hashPassword, verifyPassword, generateToken, isLegacyHash } from '../crypto';
 import { requireAuth } from '../middleware';
 
 function getSecret(env: Env): string {
@@ -77,6 +77,15 @@ export function registerRoutes(router: Router): void {
     const isValid = await verifyPassword(password, user.password);
     if (!isValid) {
       return error('密码错误', 400);
+    }
+
+    // 自动升级旧格式密码到 PBKDF2
+    if (isLegacyHash(user.password)) {
+      const newHash = await hashPassword(password);
+      await db
+        .prepare('UPDATE users SET password = ? WHERE id = ?')
+        .bind(newHash, user.id)
+        .run();
     }
 
     const token = await generateToken(
