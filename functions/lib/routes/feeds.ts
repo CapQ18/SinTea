@@ -1,0 +1,217 @@
+// 动态路由
+
+import type { Router } from '../router';
+import type { Env } from '../env';
+import { ok, error } from '../response';
+import { requireAuth } from '../middleware';
+
+export function registerRoutes(router: Router): void {
+  // GET /api/feeds — 动态列表（支持分页）
+  router.get('/api/feeds', async (request, env) => {
+    const db = env.DB;
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50);
+    const offset = (page - 1) * limit;
+
+    const results = await db
+      .prepare(
+        'SELECT f.*, u.username, u.nickname, u.avatar FROM feeds f JOIN users u ON f.userId = u.id ORDER BY f.createdAt DESC LIMIT ? OFFSET ?',
+      )
+      .bind(limit, offset)
+      .all();
+
+    // 获取总数用于分页
+    const countResult = (await db
+      .prepare('SELECT COUNT(*) as total FROM feeds')
+      .first()) as any;
+
+    const feedsWithData = await Promise.all(
+      (results.results as any[]).map(async (feed: any) => {
+        const comments = await db
+          .prepare(
+            'SELECT c.*, u.username, u.nickname, u.avatar FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId = ? ORDER BY c.createdAt DESC',
+          )
+          .bind(feed.id)
+          .all();
+
+        const likeCount = (await db
+          .prepare('SELECT COUNT(*) as count FROM likes WHERE feedId = ?')
+          .bind(feed.id)
+          .first()) as any;
+
+        return {
+          ...feed,
+          images: feed.images ? JSON.parse(feed.images) : [],
+          comments: comments.results,
+          likes: likeCount?.count || 0,
+        };
+      }),
+    );
+
+    return ok({
+      feeds: feedsWithData,
+      total: countResult?.total || 0,
+      page,
+      limit,
+      hasMore: offset + limit < (countResult?.total || 0),
+    });
+  });
+
+  // GET /api/feeds/:id — 动态详情
+  router.get('/api/feeds/:id', async (request, env, params) => {
+    const db = env.DB;
+    const feedId = parseInt(params.id);
+    if (isNaN(feedId)) return error('无效的动态ID', 400);
+
+    const feed = (await db
+      .prepare(
+        'SELECT f.*, u.username, u.nickname, u.avatar FROM feeds f JOIN users u ON f.userId = u.id WHERE f.id = ?',
+      )
+      .bind(feedId)
+      .first()) as any;
+
+    if (!feed) {
+      return error('动态不存在', 404);
+    }
+
+    const comments = await db
+      .prepare(
+        'SELECT c.*, u.username, u.nickname, u.avatar FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId = ? ORDER BY c.createdAt DESC',
+      )
+      .bind(feedId)
+      .all();
+
+    const likeCount = (await db
+      .prepare('SELECT COUNT(*) as count FROM likes WHERE feedId = ?')
+      .bind(feedId)
+      .first()) as any;
+
+    return ok({
+      feed: {
+        ...feed,
+        images: feed.images ? JSON.parse(feed.images) : [],
+        comments: comments.results,
+        likes: likeCount?.count || 0,
+      },
+    });
+  });
+
+  // POST /api/feeds — 发布动态
+  router.post('/api/feeds', async (request, env) => {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    const db = env.DB;
+    const body: any = await request.json();
+    const {
+      shopName,
+      drinkName,
+      content,
+      type,
+      rating,
+      images,
+      sweetness,
+      tea,
+      milk,
+      taste,
+      coolness,
+      appearance,
+    } = body;
+
+    const imagesJson = images ? JSON.stringify(images) : null;
+
+    const result = await db
+      .prepare(
+        'INSERT INTO feeds (userId, shopName, drinkName, content, type, rating, images, sweetness, tea, milk, taste, coolness, appearance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .bind(
+        auth.userId,
+        shopName || '',
+        drinkName || '',
+        content || '',
+        type || 'neutral',
+        rating || 3,
+        imagesJson,
+        sweetness || 50,
+        tea || 50,
+        milk || 50,
+        taste || 50,
+        coolness || 50,
+        appearance || 50,
+      )
+      .run();
+
+    return ok({ feedId: Number(result.lastInsertRowid) });
+  });
+
+  // POST /api/feeds/:id/like — 点赞/取消点赞
+  router.post('/api/feeds/:id/like', async (request, env, params) => {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    const db = env.DB;
+    const feedId = parseInt(params.id);
+    if (isNaN(feedId)) return error('无效的动态ID', 400);
+
+    const existing = await db
+      .prepare('SELECT id FROM likes WHERE userId = ? AND feedId = ?')
+      .bind(auth.userId, feedId)
+      .first();
+
+    let liked: boolean;
+
+    if (existing) {
+      await db
+        .prepare('DELETE FROM likes WHERE userId = ? AND feedId = ?')
+        .bind(auth.userId, feedId)
+        .run();
+      liked = false;
+    } else {
+      await db
+        .prepare('INSERT INTO likes (userId, feedId) VALUES (?, ?)')
+        .bind(auth.userId, feedId)
+        .run();
+      liked = true;
+    }
+
+    // 同步更新 feeds 表的 likes 计数
+    const likeCount = (await db
+      .prepare('SELECT COUNT(*) as count FROM likes WHERE feedId = ?')
+      .bind(feedId)
+      .first()) as any;
+    await db
+      .prepare('UPDATE feeds SET likes = ? WHERE id = ?')
+      .bind(likeCount?.count || 0, feedId)
+      .run();
+
+    return ok({ liked, likes: likeCount?.count || 0 });
+  });
+
+  // POST /api/feeds/:id/comments — 发表评论
+  router.post('/api/feeds/:id/comments', async (request, env, params) => {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    const db = env.DB;
+    const feedId = parseInt(params.id);
+    if (isNaN(feedId)) return error('无效的动态ID', 400);
+
+    const body: any = await request.json();
+    const { content } = body;
+
+    if (!content || !content.trim()) {
+      return error('评论内容不能为空', 400);
+    }
+
+    const result = await db
+      .prepare('INSERT INTO comments (feedId, userId, content) VALUES (?, ?, ?)')
+      .bind(feedId, auth.userId, content.trim())
+      .run();
+
+    return ok({ commentId: Number(result.lastInsertRowid) });
+  });
+
+  // TODO Phase 2 — 动态排序支持
+  // GET /api/feeds?sort=hot → 按点赞数排序
+}
