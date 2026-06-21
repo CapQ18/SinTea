@@ -13,6 +13,7 @@ const FeedHome: React.FC = () => {
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [viewerImages, setViewerImages] = useState<string[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,6 +22,15 @@ const FeedHome: React.FC = () => {
     { key: 'latest', label: '最新' },
     { key: 'best', label: '精华' },
   ];
+
+  const loadUnreadCount = async () => {
+    try {
+      const data = await request<{ success: boolean; unreadCount?: number }>(
+        API.notifications.unreadCount
+      );
+      if (data.success) setUnreadNotifs(data.unreadCount || 0);
+    } catch { /* ignore */ }
+  };
 
   const loadPosts = async () => {
     setLoading(true);
@@ -82,6 +92,7 @@ const FeedHome: React.FC = () => {
 
   useEffect(() => {
     loadPosts();
+    loadUnreadCount();
   }, [location.key, activeTab]);
 
   const displayFeeds =
@@ -121,6 +132,36 @@ const FeedHome: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col bg-cream">
+      {/* 顶部栏：搜索 + 通知 */}
+      <div className="flex-shrink-0 bg-white px-4 py-2 flex items-center justify-between border-b border-border-light">
+        <h1 className="text-lg font-bold text-primary">SinTea</h1>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/search')}
+            className="w-9 h-9 flex items-center justify-center text-text-gray rounded-full hover:bg-bg-gray"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </button>
+          <button
+            onClick={() => navigate('/notifications')}
+            className="relative w-9 h-9 flex items-center justify-center text-text-gray rounded-full hover:bg-bg-gray"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 01-3.46 0" />
+            </svg>
+            {unreadNotifs > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+                {unreadNotifs > 99 ? '99+' : unreadNotifs}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
       <div className="flex-shrink-0 bg-white">
         <div className="flex border-b border-border-light">
           {tabs.map((tab) => (

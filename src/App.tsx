@@ -8,6 +8,8 @@ import Profile from './pages/Profile';
 import ProfileEdit from './pages/ProfileEdit';
 import Discover from './pages/Discover';
 import ShopDetail from './pages/ShopDetail';
+import Search from './pages/Search';
+import Notifications from './pages/Notifications';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NavBar from './components/NavBar';
@@ -84,6 +86,16 @@ const AppContent: React.FC = () => {
         <Route path="/shop/:id" element={
           <ProtectedRoute>
             <ShopDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/search" element={
+          <ProtectedRoute>
+            <Search />
+          </ProtectedRoute>
+        } />
+        <Route path="/notifications" element={
+          <ProtectedRoute>
+            <Notifications />
           </ProtectedRoute>
         } />
       </Routes>

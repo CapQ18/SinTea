@@ -36,6 +36,18 @@ export const API = {
     create: `${API_BASE_URL}/api/follows`,
     delete: `${API_BASE_URL}/api/follows`,
   },
+  search: `${API_BASE_URL}/api/search`,
+  chats: {
+    list: `${API_BASE_URL}/api/chats`,
+    get: (userId: string) => `${API_BASE_URL}/api/chats/${userId}`,
+    send: `${API_BASE_URL}/api/chats`,
+    unread: `${API_BASE_URL}/api/chats/unread`,
+  },
+  notifications: {
+    list: `${API_BASE_URL}/api/notifications`,
+    unreadCount: `${API_BASE_URL}/api/notifications/unread-count`,
+    readAll: `${API_BASE_URL}/api/notifications/read-all`,
+  },
 };
 
 export const getAuthHeaders = () => {
