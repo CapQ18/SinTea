@@ -111,6 +111,10 @@ const FeedHome: React.FC = () => {
     navigate(`/detail/${id}`);
   };
 
+  const handleUserClick = (userId: number) => {
+    navigate(`/chat/${userId}`);
+  };
+
   const handleFollow = async (userId: number, isFollowing: boolean) => {
     try {
       if (isFollowing) {
@@ -143,6 +147,14 @@ const FeedHome: React.FC = () => {
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </button>
+          <button
+            onClick={() => navigate('/chats')}
+            className="w-9 h-9 flex items-center justify-center text-text-gray rounded-full hover:bg-bg-gray"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
             </svg>
           </button>
           <button
@@ -193,6 +205,7 @@ const FeedHome: React.FC = () => {
             <FeedCard
               key={item.id}
               item={item}
+              onUserClick={handleUserClick}
               onImageClick={handleImageClick}
               onCardClick={handleCardClick}
               onFollow={handleFollow}

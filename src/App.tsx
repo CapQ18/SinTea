@@ -10,6 +10,8 @@ import Discover from './pages/Discover';
 import ShopDetail from './pages/ShopDetail';
 import Search from './pages/Search';
 import Notifications from './pages/Notifications';
+import ChatList from './pages/ChatList';
+import Chat from './pages/Chat';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NavBar from './components/NavBar';
@@ -96,6 +98,16 @@ const AppContent: React.FC = () => {
         <Route path="/notifications" element={
           <ProtectedRoute>
             <Notifications />
+          </ProtectedRoute>
+        } />
+        <Route path="/chats" element={
+          <ProtectedRoute>
+            <ChatList />
+          </ProtectedRoute>
+        } />
+        <Route path="/chat/:userId" element={
+          <ProtectedRoute>
+            <Chat />
           </ProtectedRoute>
         } />
       </Routes>
