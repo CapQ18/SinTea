@@ -78,9 +78,32 @@ const FeedCard: React.FC<FeedCardProps> = ({
   };
 
   const renderImages = () => {
-    const imageCount = item.images.length;
+    const imageCount = item.imageCount || item.images.length;
 
     if (imageCount === 0) return null;
+
+    // 列表接口不返回图片数据时，显示占位计数
+    if (item.images.length === 0 && imageCount > 0) {
+      return (
+        <div
+          className="mt-3 rounded-lg overflow-hidden bg-bg-gray flex items-center justify-center cursor-pointer"
+          style={{ height: 120 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onCardClick?.(item.id);
+          }}
+        >
+          <div className="text-center text-text-gray">
+            <svg className="w-8 h-8 mx-auto mb-1 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            <span className="text-xs">{imageCount} 张图片 · 点击查看</span>
+          </div>
+        </div>
+      );
+    }
 
     if (imageCount === 1) {
       return (

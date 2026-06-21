@@ -26,6 +26,7 @@ export interface FeedItem {
   type: 'recommend' | 'neutral' | 'warning';
   content: string;
   images: string[];
+  imageCount?: number;
   date: string;
   comments: number;
   likes: number;
