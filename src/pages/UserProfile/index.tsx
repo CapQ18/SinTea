@@ -24,6 +24,9 @@ const UserProfilePage: React.FC = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [wishlists, setWishlists] = useState<any[]>([]);
   const [treatingId, setTreatingId] = useState<number | null>(null);
+  const [userFeeds, setUserFeeds] = useState<any[]>([]);
+  const [feedsPage, setFeedsPage] = useState(1);
+  const [hasMoreFeeds, setHasMoreFeeds] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -51,9 +54,25 @@ const UserProfilePage: React.FC = () => {
         );
         if (wl.success && wl.wishlists) setWishlists(wl.wishlists);
       } catch { /* ignore */ }
+
+      // Load user feeds
+      loadUserFeeds(1);
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
+  };
+
+  const loadUserFeeds = async (page: number) => {
+    try {
+      const data = await request<{ success: boolean; feeds?: any[]; hasMore?: boolean }>(
+        `${API.users.feeds(id!)}?page=${page}`
+      );
+      if (data.success && data.feeds) {
+        setUserFeeds(prev => page === 1 ? data.feeds! : [...prev, ...data.feeds!]);
+        setHasMoreFeeds(data.hasMore || false);
+        setFeedsPage(page);
+      }
+    } catch { /* ignore */ }
   };
 
   const handleFollow = async () => {
@@ -207,6 +226,50 @@ const UserProfilePage: React.FC = () => {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* TA 的动态 */}
+        <div className="bg-white rounded-lg p-4 mt-3">
+          <h3 className="text-sm font-semibold text-text-primary mb-3">
+            TA 的动态 ({user.feedsCount})
+          </h3>
+          {userFeeds.length === 0 ? (
+            <p className="text-xs text-text-gray text-center py-4">暂无动态</p>
+          ) : (
+            <div className="space-y-2">
+              {userFeeds.map((feed: any) => (
+                <div
+                  key={feed.id}
+                  className="p-3 bg-bg-gray rounded-lg cursor-pointer active:scale-[0.99]"
+                  onClick={() => navigate(`/detail/${feed.id}`)}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`tag text-xs ${
+                      feed.type === 'recommend' ? 'tag-recommend' :
+                      feed.type === 'warning' ? 'tag-warning' : 'tag-neutral'
+                    }`}>
+                      {feed.type === 'recommend' ? '推荐' : feed.type === 'warning' ? '避雷' : '客观'}
+                    </span>
+                    <span className="text-xs text-text-gray">#{feed.drinkName}</span>
+                    <span className="text-xs text-yellow-500 ml-auto">⭐ {feed.rating}</span>
+                  </div>
+                  <p className="text-sm text-text-secondary line-clamp-2">{feed.content}</p>
+                  <div className="flex items-center gap-3 mt-2 text-xs text-text-gray">
+                    <span>❤️ {feed.likes || 0}</span>
+                    <span>💬 {feed.comments?.length || 0}</span>
+                  </div>
+                </div>
+              ))}
+              {hasMoreFeeds && (
+                <button
+                  onClick={() => loadUserFeeds(feedsPage + 1)}
+                  className="w-full py-2 text-xs text-primary font-medium"
+                >
+                  加载更多
+                </button>
+              )}
             </div>
           )}
         </div>

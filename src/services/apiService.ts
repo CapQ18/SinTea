@@ -10,6 +10,7 @@ export const API = {
     get: (id: string) => `${API_BASE_URL}/api/users/${id}`,
     update: `${API_BASE_URL}/api/users`,
     list: `${API_BASE_URL}/api/users`,
+    feeds: (id: string) => `${API_BASE_URL}/api/users/${id}/feeds`,
   },
   shops: {
     list: `${API_BASE_URL}/api/shops`,
@@ -24,7 +25,9 @@ export const API = {
     create: `${API_BASE_URL}/api/feeds`,
     like: (id: string) => `${API_BASE_URL}/api/feeds/${id}/like`,
     comment: (id: string) => `${API_BASE_URL}/api/feeds/${id}/comments`,
+    deleteComment: (feedId: string, commentId: string) => `${API_BASE_URL}/api/feeds/${feedId}/comments/${commentId}`,
     delete: (id: string) => `${API_BASE_URL}/api/feeds/${id}`,
+    edit: (id: string) => `${API_BASE_URL}/api/feeds/${id}`,
   },
   wishlists: {
     list: `${API_BASE_URL}/api/wishlists`,

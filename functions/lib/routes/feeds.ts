@@ -287,4 +287,56 @@ export function registerRoutes(router: Router): void {
 
     return ok({});
   });
+
+  // DELETE /api/feeds/:id/comments/:commentId — 删除自己的评论
+  router.delete('/api/feeds/:id/comments/:commentId', async (request, env, params) => {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    const db = env.DB;
+    const feedId = parseInt(params.id);
+    const commentId = parseInt(params.commentId);
+    if (isNaN(feedId) || isNaN(commentId)) return error('无效的ID', 400);
+
+    const comment = (await db
+      .prepare('SELECT userId FROM comments WHERE id = ? AND feedId = ?')
+      .bind(commentId, feedId)
+      .first()) as any;
+
+    if (!comment) return error('评论不存在', 404);
+    if (comment.userId !== auth.userId) return error('只能删除自己的评论', 403);
+
+    await db.prepare('DELETE FROM comments WHERE id = ?').bind(commentId).run();
+    return ok({});
+  });
+
+  // PUT /api/feeds/:id — 编辑自己的动态
+  router.put('/api/feeds/:id', async (request, env, params) => {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    const db = env.DB;
+    const feedId = parseInt(params.id);
+    if (isNaN(feedId)) return error('无效的动态ID', 400);
+
+    const feed = (await db
+      .prepare('SELECT userId FROM feeds WHERE id = ?')
+      .bind(feedId)
+      .first()) as any;
+
+    if (!feed) return error('动态不存在', 404);
+    if (feed.userId !== auth.userId) return error('只能编辑自己的动态', 403);
+
+    const body: any = await request.json();
+    const { content, rating, type, shopName, drinkName } = body;
+
+    await db
+      .prepare(
+        'UPDATE feeds SET content = COALESCE(?, content), rating = COALESCE(?, rating), type = COALESCE(?, type), shopName = COALESCE(?, shopName), drinkName = COALESCE(?, drinkName) WHERE id = ?',
+      )
+      .bind(content || null, rating || null, type || null, shopName || null, drinkName || null, feedId)
+      .run();
+
+    return ok({});
+  });
 }

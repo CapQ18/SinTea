@@ -104,4 +104,41 @@ export function registerRoutes(router: Router): void {
 
     return ok({ user: updatedUser });
   });
+
+  // GET /api/users/:id/feeds — 用户的动态列表（分页）
+  router.get('/api/users/:id/feeds', async (request, env, params) => {
+    const db = env.DB;
+    const userId = parseInt(params.id);
+    if (isNaN(userId)) return error('无效的用户ID', 400);
+
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '10'), 20);
+    const offset = (page - 1) * limit;
+
+    const results = await db
+      .prepare(
+        'SELECT f.*, u.username, u.nickname, u.avatar FROM feeds f JOIN users u ON f.userId = u.id WHERE f.userId = ? ORDER BY f.createdAt DESC LIMIT ? OFFSET ?',
+      )
+      .bind(userId, limit, offset)
+      .all();
+
+    const total = (await db
+      .prepare('SELECT COUNT(*) as count FROM feeds WHERE userId = ?')
+      .bind(userId)
+      .first()) as any;
+
+    const feeds = (results.results as any[]).map((f: any) => ({
+      ...f,
+      images: f.images ? JSON.parse(f.images) : [],
+    }));
+
+    return ok({
+      feeds,
+      total: total?.count || 0,
+      page,
+      limit,
+      hasMore: offset + limit < (total?.count || 0),
+    });
+  });
 }

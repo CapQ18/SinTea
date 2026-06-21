@@ -17,6 +17,9 @@ const FeedHome: React.FC = () => {
   const [viewerIndex, setViewerIndex] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [currentUserId, setCurrentUserId] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -52,26 +55,25 @@ const FeedHome: React.FC = () => {
     } catch { /* ignore */ }
   };
 
-  const loadPosts = async () => {
-    setLoading(true);
+  const loadPosts = async (pageNum = 1, append = false) => {
+    if (pageNum === 1) setLoading(true);
+    else setIsLoadingMore(true);
     try {
-      // 获取关注列表
       let followedIds: number[] = [];
       try {
         const followData = await request<{ success: boolean; follows?: any[] }>(API.follows.list);
         if (followData.success && followData.follows) {
           followedIds = followData.follows.map((f: any) => f.id || f.targetUserId);
         }
-      } catch { /* 未登录忽略 */ }
+      } catch { /* ignore */ }
 
-      // 根据标签选择排序方式
       const sort = activeTab === 'best' ? 'hot' : 'new';
       const feedData = await request<{
         success: boolean;
         feeds?: any[];
         total?: number;
         hasMore?: boolean;
-      }>(`${API.feeds.list}?sort=${sort}`);
+      }>(`${API.feeds.list}?sort=${sort}&page=${pageNum}&limit=15`);
 
       if (feedData.success && feedData.feeds) {
         const apiPosts: FeedItem[] = feedData.feeds.map((feed: any) => ({
@@ -99,22 +101,35 @@ const FeedHome: React.FC = () => {
           rating: feed.rating || 3,
           location: feed.location || '',
         }));
-        setFeedList(apiPosts);
-      } else {
+        setFeedList(prev => append ? [...prev, ...apiPosts] : apiPosts);
+        setPage(pageNum);
+        setHasMore(feedData.hasMore || false);
+      } else if (!append) {
         setFeedList([]);
       }
     } catch {
-      setFeedList([]);
+      if (!append) setFeedList([]);
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
   useEffect(() => {
     setCurrentUserId(getMyId());
-    loadPosts();
+    loadPosts(1);
     loadUnreadCount();
   }, [location.key, activeTab]);
+
+  // 滚动加载更多
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
+      if (!isLoadingMore && hasMore) {
+        loadPosts(page + 1, true);
+      }
+    }
+  };
 
   const displayFeeds =
     activeTab === 'follow'
@@ -235,7 +250,7 @@ const FeedHome: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="flex-1 overflow-y-auto px-4 py-3" onScroll={handleScroll}>
         {loading && (
           <div className="flex justify-center py-8">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -257,7 +272,13 @@ const FeedHome: React.FC = () => {
           ))}
         </div>
 
-        {!loading && displayFeeds.length === 0 && (
+        {isLoadingMore && (
+          <div className="flex justify-center py-4">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+
+        {!loading && !isLoadingMore && displayFeeds.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-text-gray">
             <svg className="w-16 h-16 mb-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
               <rect x="3" y="3" width="18" height="18" rx="2" />
