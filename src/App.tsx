@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import NavBar from './components/NavBar';
+import InstallBanner from './components/InstallBanner';
 import { isLoggedIn, initTestUsers } from './services/authService';
 
 initTestUsers();
@@ -52,6 +53,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="w-full min-h-screen bg-cream relative">
+      <InstallBanner />
       <Routes>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />

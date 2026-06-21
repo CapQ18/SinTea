@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#F5D0A9" />
+  <title>SinTea - 你离线了</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #FFF8F0 0%, #F5D0A9 50%, #E8B88A 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 24px;
+    }
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 48px 32px;
+      max-width: 380px;
+      box-shadow: 0 8px 40px rgba(139, 105, 20, 0.15);
+    }
+    .emoji { font-size: 80px; margin-bottom: 16px; }
+    h1 {
+      font-size: 22px;
+      color: #5D4037;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 15px;
+      color: #8D6E63;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    button {
+      background: linear-gradient(135deg, #F5D0A9, #E8B88A);
+      color: #5D4037;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 50px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    button:hover { transform: scale(1.05); }
+    button:active { transform: scale(0.97); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="emoji">🧋</div>
+    <h1>哎呀，你离线了！</h1>
+    <p>SinTea 需要网络连接才能探索最新的奶茶评测。<br />请检查你的网络后重试。</p>
+    <button onclick="location.reload()">🔄 重新连接</button>
+  </div>
+</body>
+</html>
