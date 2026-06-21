@@ -3,11 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, logout, getProfile } from '../../services/authService';
 import { API, request } from '../../services/apiService';
 import { User } from '../../types/user';
+import {
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ResponsiveContainer,
+} from 'recharts';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState({ reviews: 0, wishlist: 0, drank: 0, likes: 0 });
+  const [tasteProfile, setTasteProfile] = useState<{
+    sweetness: number; tea: number; milk: number; taste: number; coolness: number; appearance: number;
+  } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -40,6 +51,17 @@ const Profile: React.FC = () => {
         const drank = wishlists.filter(w => w.isDrank).length;
 
         setStats({ reviews, wishlist: wishlists.length, drank, likes });
+
+        // 获取口味画像
+        if (user?.id) {
+          const userDetail = await request<{
+            success: boolean;
+            user?: { tasteProfile?: any };
+          }>(API.users.get(String(user.id)));
+          if (userDetail.success && userDetail.user?.tasteProfile) {
+            setTasteProfile(userDetail.user.tasteProfile);
+          }
+        }
       }
     } catch {
       setUser(getCurrentUser());
@@ -184,6 +206,38 @@ const Profile: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* 口味画像雷达图 */}
+          {tasteProfile && (
+            <div className="mt-4 pt-4 border-t border-border-light">
+              <h3 className="text-sm font-semibold text-text-primary mb-2">口味画像</h3>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart
+                    data={[
+                      { name: '甜度', value: tasteProfile.sweetness },
+                      { name: '茶味', value: tasteProfile.tea },
+                      { name: '奶味', value: tasteProfile.milk },
+                      { name: '口感', value: tasteProfile.taste },
+                      { name: '清凉', value: tasteProfile.coolness },
+                      { name: '颜值', value: tasteProfile.appearance },
+                    ]}
+                  >
+                    <PolarGrid stroke="#e5e7eb" />
+                    <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar
+                      name="口味"
+                      dataKey="value"
+                      stroke="#f59e0b"
+                      fill="#f59e0b"
+                      fillOpacity={0.3}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg mt-4 overflow-hidden">
