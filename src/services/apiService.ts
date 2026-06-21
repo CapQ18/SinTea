@@ -24,6 +24,7 @@ export const API = {
     create: `${API_BASE_URL}/api/feeds`,
     like: (id: string) => `${API_BASE_URL}/api/feeds/${id}/like`,
     comment: (id: string) => `${API_BASE_URL}/api/feeds/${id}/comments`,
+    delete: (id: string) => `${API_BASE_URL}/api/feeds/${id}`,
   },
   wishlists: {
     list: `${API_BASE_URL}/api/wishlists`,

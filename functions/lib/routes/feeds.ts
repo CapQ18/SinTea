@@ -261,4 +261,30 @@ export function registerRoutes(router: Router): void {
 
     return ok({ commentId: Number(result.lastInsertRowid) });
   });
+
+  // DELETE /api/feeds/:id — 删除自己的动态
+  router.delete('/api/feeds/:id', async (request, env, params) => {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    const db = env.DB;
+    const feedId = parseInt(params.id);
+    if (isNaN(feedId)) return error('无效的动态ID', 400);
+
+    const feed = (await db
+      .prepare('SELECT userId FROM feeds WHERE id = ?')
+      .bind(feedId)
+      .first()) as any;
+
+    if (!feed) return error('动态不存在', 404);
+    if (feed.userId !== auth.userId) return error('只能删除自己的动态', 403);
+
+    // 删除关联数据
+    await db.prepare('DELETE FROM likes WHERE feedId = ?').bind(feedId).run();
+    await db.prepare('DELETE FROM comments WHERE feedId = ?').bind(feedId).run();
+    await db.prepare('DELETE FROM notifications WHERE feedId = ?').bind(feedId).run();
+    await db.prepare('DELETE FROM feeds WHERE id = ?').bind(feedId).run();
+
+    return ok({});
+  });
 }

@@ -80,6 +80,18 @@ export function registerRoutes(router: Router): void {
       }));
     }
 
+    // 搜索用户
+    if (type === 'all' || type === 'users') {
+      const users = await db
+        .prepare(
+          'SELECT id, username, nickname, avatar, bio FROM users WHERE username LIKE ? OR nickname LIKE ? OR bio LIKE ? LIMIT ?',
+        )
+        .bind(searchTerm, searchTerm, searchTerm, limit)
+        .all();
+
+      results.users = users.results;
+    }
+
     return ok({ query: q, type, results });
   });
 }

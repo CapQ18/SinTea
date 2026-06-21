@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API, request } from '../../services/apiService';
 
-type SearchType = 'all' | 'feeds' | 'shops' | 'drinks';
+type SearchType = 'all' | 'feeds' | 'shops' | 'drinks' | 'users';
 
 interface SearchResult {
   feeds?: any[];
   shops?: any[];
   drinks?: any[];
+  users?: any[];
 }
 
 const Search: React.FC = () => {
@@ -44,12 +45,14 @@ const Search: React.FC = () => {
     { key: 'feeds', label: '动态' },
     { key: 'shops', label: '店铺' },
     { key: 'drinks', label: '饮品' },
+    { key: 'users', label: '用户' },
   ];
 
   const totalCount =
     (results?.feeds?.length || 0) +
     (results?.shops?.length || 0) +
-    (results?.drinks?.length || 0);
+    (results?.drinks?.length || 0) +
+    (results?.users?.length || 0);
 
   return (
     <div className="min-h-screen bg-cream pb-20">
@@ -195,6 +198,28 @@ const Search: React.FC = () => {
                             <span className="text-xs text-primary">¥{drink.price}</span>
                           )}
                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 用户 */}
+            {results.users && results.users.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary mb-2">用户</h3>
+                <div className="space-y-2">
+                  {results.users.map((u: any) => (
+                    <div
+                      key={u.id}
+                      className="bg-white rounded-lg p-3 flex items-center gap-3 cursor-pointer active:scale-[0.99]"
+                      onClick={() => navigate(`/user/${u.id}`)}
+                    >
+                      <img src={u.avatar} alt="" className="w-10 h-10 rounded-full object-cover bg-gray-100" />
+                      <div>
+                        <span className="text-sm font-medium">{u.nickname || u.username}</span>
+                        <p className="text-xs text-text-gray">@{u.username}</p>
                       </div>
                     </div>
                   ))}

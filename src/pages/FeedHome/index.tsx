@@ -5,15 +5,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { API, request } from '../../services/apiService';
 
 type TabType = 'follow' | 'latest' | 'best';
+type FilterType = 'all' | 'recommend' | 'neutral' | 'warning';
 
 const FeedHome: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('latest');
+  const [filterType, setFilterType] = useState<FilterType>('all');
   const [feedList, setFeedList] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [viewerImages, setViewerImages] = useState<string[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -22,6 +25,23 @@ const FeedHome: React.FC = () => {
     { key: 'latest', label: '最新' },
     { key: 'best', label: '精华' },
   ];
+
+  const filters: { key: FilterType; label: string }[] = [
+    { key: 'all', label: '全部' },
+    { key: 'recommend', label: '推荐' },
+    { key: 'neutral', label: '客观' },
+    { key: 'warning', label: '避雷' },
+  ];
+
+  // 从 token 解析当前用户 ID
+  const getMyId = (): number => {
+    const t = localStorage.getItem('sintea_token');
+    if (!t) return 0;
+    try {
+      const p = JSON.parse(atob(t.split('.')[1]));
+      return p.id || 0;
+    } catch { return 0; }
+  };
 
   const loadUnreadCount = async () => {
     try {
@@ -91,14 +111,17 @@ const FeedHome: React.FC = () => {
   };
 
   useEffect(() => {
+    setCurrentUserId(getMyId());
     loadPosts();
     loadUnreadCount();
   }, [location.key, activeTab]);
 
   const displayFeeds =
     activeTab === 'follow'
-      ? feedList.filter((item) => item.user.isFollowing)
-      : feedList;
+      ? feedList
+          .filter((item) => item.user.isFollowing)
+          .filter((item) => filterType === 'all' || item.type === filterType)
+      : feedList.filter((item) => filterType === 'all' || item.type === filterType);
 
   const handleImageClick = (images: string[], index: number) => {
     if (images.length === 0) return; // 列表无图片数据，不能预览
@@ -112,7 +135,11 @@ const FeedHome: React.FC = () => {
   };
 
   const handleUserClick = (userId: number) => {
-    navigate(`/chat/${userId}`);
+    navigate(`/user/${userId}`);
+  };
+
+  const handleDelete = (id: number) => {
+    setFeedList((prev) => prev.filter((f) => f.id !== id));
   };
 
   const handleFollow = async (userId: number, isFollowing: boolean) => {
@@ -193,6 +220,21 @@ const FeedHome: React.FC = () => {
         </div>
       </div>
 
+      {/* 筛选标签 */}
+      <div className="flex-shrink-0 bg-white px-4 pb-2 flex gap-2">
+        {filters.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilterType(f.key)}
+            className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
+              filterType === f.key ? 'bg-primary text-white' : 'bg-bg-gray text-text-gray'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {loading && (
           <div className="flex justify-center py-8">
@@ -205,10 +247,12 @@ const FeedHome: React.FC = () => {
             <FeedCard
               key={item.id}
               item={item}
+              currentUserId={currentUserId}
               onUserClick={handleUserClick}
               onImageClick={handleImageClick}
               onCardClick={handleCardClick}
               onFollow={handleFollow}
+              onDelete={handleDelete}
             />
           ))}
         </div>
