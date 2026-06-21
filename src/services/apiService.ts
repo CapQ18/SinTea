@@ -31,6 +31,8 @@ export const API = {
     create: `${API_BASE_URL}/api/wishlists`,
     update: (id: string) => `${API_BASE_URL}/api/wishlists/${id}`,
     delete: (id: string) => `${API_BASE_URL}/api/wishlists/${id}`,
+    userWishlist: (userId: string) => `${API_BASE_URL}/api/wishlists/user/${userId}`,
+    treat: (id: string) => `${API_BASE_URL}/api/wishlists/${id}/treat`,
   },
   follows: {
     list: `${API_BASE_URL}/api/follows`,

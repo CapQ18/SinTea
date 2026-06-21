@@ -22,6 +22,8 @@ const UserProfilePage: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [wishlists, setWishlists] = useState<any[]>([]);
+  const [treatingId, setTreatingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -40,6 +42,14 @@ const UserProfilePage: React.FC = () => {
         if (follows.success && follows.follows) {
           setIsFollowing(follows.follows.some((f: any) => f.id === parseInt(id!)));
         }
+      } catch { /* ignore */ }
+
+      // Load wishlist
+      try {
+        const wl = await request<{ success: boolean; wishlists?: any[] }>(
+          API.wishlists.userWishlist(id!)
+        );
+        if (wl.success && wl.wishlists) setWishlists(wl.wishlists);
       } catch { /* ignore */ }
     } catch { /* ignore */ } finally {
       setLoading(false);
@@ -61,6 +71,26 @@ const UserProfilePage: React.FC = () => {
       }
       setIsFollowing(!isFollowing);
     } catch { /* ignore */ }
+  };
+
+  const handleTreat = async (wishlistId: number) => {
+    setTreatingId(wishlistId);
+    try {
+      const data = await request<{ success: boolean; message?: string; conversationId?: number }>(
+        API.wishlists.treat(String(wishlistId)),
+        { method: 'POST' }
+      );
+      if (data.success) {
+        alert(data.message || '已发送！');
+        navigate(`/chat/${user!.id}`);
+      } else {
+        alert(data.message || '操作失败');
+      }
+    } catch {
+      alert('操作失败');
+    } finally {
+      setTreatingId(null);
+    }
   };
 
   if (loading) {
@@ -143,6 +173,43 @@ const UserProfilePage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* 心愿单 */}
+        <div className="bg-white rounded-lg p-4 mt-3">
+          <h3 className="text-sm font-semibold text-text-primary mb-3">
+            心愿单 ({wishlists.length})
+          </h3>
+          {wishlists.length === 0 ? (
+            <p className="text-xs text-text-gray text-center py-4">暂无心愿饮品</p>
+          ) : (
+            <div className="space-y-2">
+              {wishlists.map((w: any) => (
+                <div key={w.id} className="flex items-center gap-3 p-2 bg-bg-gray rounded-lg">
+                  {w.imageUrl ? (
+                    <img src={w.imageUrl} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary text-lg">🧋</span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-text-primary truncate">{w.drinkName}</p>
+                    <p className="text-xs text-text-gray">{w.shopName} · {w.category}</p>
+                  </div>
+                  {isFollowing && (
+                    <button
+                      onClick={() => handleTreat(w.id)}
+                      disabled={treatingId === w.id}
+                      className="px-3 py-1.5 text-xs font-medium rounded-full bg-primary text-white flex-shrink-0 disabled:opacity-50"
+                    >
+                      {treatingId === w.id ? '...' : '请她喝'}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { API, request } from '../../services/apiService';
 
 interface Notification {
   id: number;
-  type: 'like' | 'comment' | 'follow';
+  type: 'like' | 'comment' | 'follow' | 'treat';
   fromUserId: number;
   fromUsername: string;
   fromNickname: string;
@@ -53,8 +53,8 @@ const Notifications: React.FC = () => {
   const handleClick = (notif: Notification) => {
     if (notif.feedId) {
       navigate(`/detail/${notif.feedId}`);
-    } else if (notif.type === 'follow') {
-      navigate(`/profile`);
+    } else if (notif.type === 'follow' || notif.type === 'treat') {
+      navigate(`/user/${notif.fromUserId}`);
     }
   };
 
@@ -87,6 +87,12 @@ const Notifications: React.FC = () => {
             </svg>
           </div>
         );
+      case 'treat':
+        return (
+          <div className="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center">
+            <span className="text-lg">🧋</span>
+          </div>
+        );
     }
   };
 
@@ -99,6 +105,8 @@ const Notifications: React.FC = () => {
         return `${name} 评论了你的动态: "${notif.commentContent || ''}"`;
       case 'follow':
         return `${name} 关注了你`;
+      case 'treat':
+        return `${name} 请你喝 ${notif.commentContent || '奶茶'}！🧋`;
     }
   };
 

@@ -79,7 +79,7 @@ export function registerRoutes(router: Router): void {
 // 辅助函数：创建通知（供其他路由模块调用）
 export async function createNotification(
   db: D1Database,
-  type: 'like' | 'comment' | 'follow',
+  type: 'like' | 'comment' | 'follow' | 'treat',
   userId: number,       // 接收者
   fromUserId: number,   // 触发者
   extra?: { feedId?: number; commentContent?: string },
