@@ -153,6 +153,10 @@ const FeedHome: React.FC = () => {
     navigate(`/user/${userId}`);
   };
 
+  const handleChat = (userId: number) => {
+    navigate(`/chat/${userId}`);
+  };
+
   const handleDelete = (id: number) => {
     setFeedList((prev) => prev.filter((f) => f.id !== id));
   };
@@ -267,6 +271,7 @@ const FeedHome: React.FC = () => {
               onImageClick={handleImageClick}
               onCardClick={handleCardClick}
               onFollow={handleFollow}
+              onChat={handleChat}
               onDelete={handleDelete}
             />
           ))}

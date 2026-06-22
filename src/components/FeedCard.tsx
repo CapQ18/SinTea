@@ -9,6 +9,7 @@ interface FeedCardProps {
   onCardClick?: (itemId: number) => void;
   onImageClick?: (images: string[], index: number) => void;
   onFollow?: (userId: number, isFollowing: boolean) => void;
+  onChat?: (userId: number) => void;
   onLike?: (itemId: number, liked: boolean) => void;
   onDelete?: (itemId: number) => void;
 }
@@ -20,11 +21,13 @@ const FeedCard: React.FC<FeedCardProps> = ({
   onCardClick,
   onImageClick,
   onFollow,
+  onChat,
   onLike,
   onDelete,
 }) => {
   const [isLiked, setIsLiked] = useState(item.isLiked);
   const [likes, setLikes] = useState(item.likes);
+  const [isFollowing, setIsFollowing] = useState(item.user.isFollowing);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const isOwn = currentUserId != null && Number(item.userId) === currentUserId;
@@ -193,10 +196,27 @@ const FeedCard: React.FC<FeedCardProps> = ({
           </div>
 
           {!isOwn && (
-            <button onClick={(e) => { e.stopPropagation(); onFollow?.(item.user.id, item.user.isFollowing); }}
-              className={`px-3 py-1 text-xs font-medium rounded-button transition-all ${item.user.isFollowing ? 'bg-bg-gray text-text-gray' : 'btn-primary'}`}>
-              {item.user.isFollowing ? '已关注' : '+ 关注'}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button onClick={(e) => {
+                e.stopPropagation();
+                setIsFollowing(!isFollowing);
+                onFollow?.(item.user.id, isFollowing);
+              }}
+                className={`px-2.5 py-1 text-xs font-medium rounded-button transition-all ${isFollowing ? 'bg-bg-gray text-text-gray' : 'btn-primary'}`}>
+                {isFollowing ? '已关注' : '+ 关注'}
+              </button>
+              {isFollowing && (
+                <button onClick={(e) => {
+                  e.stopPropagation();
+                  onChat?.(item.user.id);
+                }}
+                  className="w-7 h-7 flex items-center justify-center text-primary border border-primary rounded-full">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                  </svg>
+                </button>
+              )}
+            </div>
           )}
         </div>
 
