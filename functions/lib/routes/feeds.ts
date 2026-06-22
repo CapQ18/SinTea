@@ -6,6 +6,12 @@ import { ok, error } from '../response';
 import { requireAuth } from '../middleware';
 import { createNotification } from './notifications';
 
+// 安全头像 URL：base64 数据太长，list 接口不返回
+function safeAvatar(username: string, raw?: string): string {
+  if (raw && !raw.startsWith('data:') && raw.length < 500) return raw;
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
+}
+
 export function registerRoutes(router: Router): void {
   // GET /api/feeds — 动态列表（支持分页和排序）
   router.get('/api/feeds', async (request, env) => {
@@ -22,7 +28,7 @@ export function registerRoutes(router: Router): void {
 
     const results = await db
       .prepare(
-        `SELECT f.*, u.username, u.nickname, u.avatar FROM feeds f JOIN users u ON f.userId = u.id ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+        `SELECT f.*, u.username, u.nickname FROM feeds f JOIN users u ON f.userId = u.id ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
       )
       .bind(limit, offset)
       .all();
@@ -36,7 +42,7 @@ export function registerRoutes(router: Router): void {
 	      (results.results as any[]).map(async (feed: any) => {
 	        const comments = await db
 	          .prepare(
-	            'SELECT c.*, u.username, u.nickname, u.avatar FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId = ? ORDER BY c.createdAt DESC',
+	            'SELECT c.*, u.username, u.nickname FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId = ? ORDER BY c.createdAt DESC',
 	          )
 	          .bind(feed.id)
 	          .all();
@@ -57,6 +63,7 @@ export function registerRoutes(router: Router): void {
 
 	        return {
 	          ...feed,
+	          avatar: safeAvatar(feed.username),
 	          images: undefined,     // 列表不传图片数据
 	          imageCount,            // 只传数量
 	          comments: comments.results,
@@ -83,7 +90,7 @@ export function registerRoutes(router: Router): void {
 
     const feed = (await db
       .prepare(
-        'SELECT f.*, u.username, u.nickname, u.avatar FROM feeds f JOIN users u ON f.userId = u.id WHERE f.id = ?',
+        'SELECT f.*, u.username, u.nickname FROM feeds f JOIN users u ON f.userId = u.id WHERE f.id = ?',
       )
       .bind(feedId)
       .first()) as any;
@@ -107,6 +114,7 @@ export function registerRoutes(router: Router): void {
     return ok({
       feed: {
         ...feed,
+        avatar: safeAvatar(feed.username),
         images: feed.images ? JSON.parse(feed.images) : [],
         comments: comments.results,
         likes: likeCount?.count || 0,

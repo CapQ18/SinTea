@@ -5,6 +5,11 @@ import type { Env } from '../env';
 import { ok, error } from '../response';
 import { requireAuth } from '../middleware';
 
+function safeAvatar(username: string, raw?: string): string {
+  if (raw && !raw.startsWith('data:') && raw.length < 500) return raw;
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
+}
+
 export function registerRoutes(router: Router): void {
   // GET /api/users — 用户列表
   router.get('/api/users', async (request, env) => {
@@ -118,7 +123,7 @@ export function registerRoutes(router: Router): void {
 
     const results = await db
       .prepare(
-        'SELECT f.*, u.username, u.nickname, u.avatar FROM feeds f JOIN users u ON f.userId = u.id WHERE f.userId = ? ORDER BY f.createdAt DESC LIMIT ? OFFSET ?',
+        'SELECT f.*, u.username, u.nickname FROM feeds f JOIN users u ON f.userId = u.id WHERE f.userId = ? ORDER BY f.createdAt DESC LIMIT ? OFFSET ?',
       )
       .bind(userId, limit, offset)
       .all();
@@ -130,6 +135,7 @@ export function registerRoutes(router: Router): void {
 
     const feeds = (results.results as any[]).map((f: any) => ({
       ...f,
+      avatar: safeAvatar(f.username),
       images: f.images ? JSON.parse(f.images) : [],
     }));
 
