@@ -159,15 +159,13 @@ export async function verifyPassword(
   storedHash: string,
 ): Promise<boolean> {
   // 兼容旧格式：纯 SHA-256 hex（不含 $ 分隔符）
-  if (!storedHash.includes('
-)) {
+  if (!storedHash.includes('$')) {
     return verifyLegacyPassword(password, storedHash);
   }
 
   // 新格式：PBKDF2
   try {
-    const parts = storedHash.split('
-);
+    const parts = storedHash.split('$');
     if (parts.length !== 3) return false;
 
     const [iterationsStr, saltHex, hashHex] = parts;
@@ -219,6 +217,5 @@ async function verifyLegacyPassword(password: string, storedHash: string): Promi
 
 // 判断是否为旧格式密码（升级用）
 export function isLegacyHash(storedHash: string): boolean {
-  return !storedHash.includes('
-);
+  return !storedHash.includes('$');
 }

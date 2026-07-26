@@ -34,6 +34,8 @@ function getShopImages(shop: any): string[] {
   }
   return getDefaultImages(shop.id);
 }
+
+function getDefaultImages(shopId: number): string[] {
   const map: Record<number, string[]> = {
     1: [
       'https://images.unsplash.com/photo-1558857561-c7e2c2d36b0a?w=400',
