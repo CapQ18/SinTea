@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, updateProfile } from '../../services/authService';
+import { compressImage } from '../../utils/imageCompress';
 import { User } from '../../types/user';
 
 const ProfileEdit: React.FC = () => {
@@ -32,15 +33,8 @@ const ProfileEdit: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 检查文件类型
     if (!file.type.startsWith('image/')) {
       setErrorMessage('请选择图片文件');
-      return;
-    }
-
-    // 检查文件大小（限制 2MB）
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorMessage('图片大小不能超过 2MB');
       return;
     }
 
@@ -48,19 +42,11 @@ const ProfileEdit: React.FC = () => {
     setErrorMessage('');
 
     try {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target?.result as string;
-        setAvatarUrl(base64);
-        setIsUploading(false);
-      };
-      reader.onerror = () => {
-        setErrorMessage('图片读取失败');
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
+      const compressed = await compressImage(file);
+      setAvatarUrl(compressed);
     } catch {
       setErrorMessage('图片处理失败');
+    } finally {
       setIsUploading(false);
     }
   };

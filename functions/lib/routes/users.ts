@@ -8,7 +8,7 @@ import { sanitizeNickname, sanitizePlainText, escapeHtml } from '../security/san
 import { rateLimit, RATE_LIMIT_PRESETS } from '../security/rateLimit';
 
 // 头像的 data:image 长度上限（避免 base64 过大→存储到 D1）
-const MAX_AVATAR_LENGTH = 200_000; // 约 200KB
+const MAX_AVATAR_LENGTH = 300_000; // 约 200KB base64
 
 function safeAvatar(username: string, raw?: string): string {
   if (
