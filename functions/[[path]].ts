@@ -21,9 +21,17 @@ import { registerRoutes as registerAdmin } from './lib/routes/admin';
 const router = new Router();
 
 // 健康检查
-router.get('/api/health', async () => {
+router.get('/api/health', async (request, env) => {
   return new Response(
-    JSON.stringify({ success: true, message: 'SinTea API is running!' }),
+    JSON.stringify({
+      success: true,
+      message: 'SinTea API is running!',
+      env: {
+        hasDB: !!env.DB,
+        hasJwtSecret: !!env.JWT_SECRET,
+        hasResendKey: !!env.RESEND_API_KEY,
+      },
+    }),
     {
       status: 200,
       headers: {
