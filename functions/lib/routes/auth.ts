@@ -103,6 +103,7 @@ export function registerRoutes(router: Router): void {
         nickname: user.nickname,
         avatar: user.avatar,
         bio: user.bio,
+        role: user.role || 'user',
       },
     });
   });
@@ -115,7 +116,7 @@ export function registerRoutes(router: Router): void {
     const db = env.DB;
     const user = await db
       .prepare(
-        'SELECT id, username, email, nickname, avatar, bio, createdAt FROM users WHERE id = ?',
+        'SELECT id, username, email, nickname, avatar, bio, role, createdAt FROM users WHERE id = ?',
       )
       .bind(auth.userId)
       .first();

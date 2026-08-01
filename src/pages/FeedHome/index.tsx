@@ -59,21 +59,21 @@ const FeedHome: React.FC = () => {
     if (pageNum === 1) setLoading(true);
     else setIsLoadingMore(true);
     try {
-      let followedIds: number[] = [];
-      try {
-        const followData = await request<{ success: boolean; follows?: any[] }>(API.follows.list);
-        if (followData.success && followData.follows) {
-          followedIds = followData.follows.map((f: any) => f.id || f.targetUserId);
-        }
-      } catch { /* ignore */ }
-
       const sort = activeTab === 'best' ? 'hot' : 'new';
-      const feedData = await request<{
-        success: boolean;
-        feeds?: any[];
-        total?: number;
-        hasMore?: boolean;
-      }>(`${API.feeds.list}?sort=${sort}&page=${pageNum}&limit=15`);
+      const [followData, feedData] = await Promise.all([
+        request<{ success: boolean; follows?: any[] }>(API.follows.list).catch(() => ({ success: false as const, follows: [] as any[] })),
+        request<{
+          success: boolean;
+          feeds?: any[];
+          total?: number;
+          hasMore?: boolean;
+        }>(`${API.feeds.list}?sort=${sort}&page=${pageNum}&limit=15`).catch(() => ({ success: false as const, feeds: [] as any[], hasMore: false as boolean })),
+      ]);
+
+      let followedIds: number[] = [];
+      if (followData.success && followData.follows) {
+        followedIds = followData.follows.map((f: any) => f.id || f.targetUserId);
+      }
 
       if (feedData.success && feedData.feeds) {
         const apiPosts: FeedItem[] = feedData.feeds.map((feed: any) => ({
@@ -117,8 +117,7 @@ const FeedHome: React.FC = () => {
 
   useEffect(() => {
     setCurrentUserId(getMyId());
-    loadPosts(1);
-    loadUnreadCount();
+    Promise.all([loadPosts(1), loadUnreadCount()]);
   }, [location.key, activeTab]);
 
   // 滚动加载更多

@@ -1,36 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../../services/postService';
-
-// 图片压缩：限制尺寸和质量，转 JPEG base64，大幅减小体积
-function compressImage(file: File, maxWidth: number, quality: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(img, 0, 0, width, height);
-
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = () => reject(new Error('图片加载失败'));
-      img.src = reader.result as string;
-    };
-    reader.onerror = () => reject(new Error('文件读取失败'));
-    reader.readAsDataURL(file);
-  });
-}
+import { compressImage } from '../../utils/imageCompress';
 
 type PostType = 'recommend' | 'neutral' | 'warning';
 
@@ -89,8 +60,7 @@ const FeedPost: React.FC = () => {
       return;
     }
 
-    // 压缩图片后再转 base64，大幅减小体积
-    compressImage(file, 400, 0.5)
+    compressImage(file)
       .then((compressed) => {
         setImages(prev => [...prev, compressed]);
       })

@@ -4,6 +4,8 @@
 import type { Env } from './env';
 import { handleOptions, error } from './response';
 
+const CACHE_TTL = 30;
+
 export type Handler = (
   request: Request,
   env: Env,
@@ -16,7 +18,6 @@ export interface RouteDefinition {
   handler: Handler;
 }
 
-// 将路由路径转换为正则，例如 '/api/feeds/:id/like' → /^\/api\/feeds\/([^/]+)\/like$/
 function pathToRegex(path: string): { regex: RegExp; paramNames: string[] } {
   const paramNames: string[] = [];
   const regexStr = path
@@ -58,7 +59,6 @@ export class Router {
   }
 
   async dispatch(request: Request, env: Env): Promise<Response | null> {
-    // OPTIONS 预检
     if (request.method === 'OPTIONS') {
       return handleOptions();
     }
@@ -67,9 +67,19 @@ export class Router {
     const pathname = url.pathname;
     const method = request.method.toUpperCase();
 
-    // 只处理 /api 路径
     if (!pathname.startsWith('/api/')) {
       return null;
+    }
+
+    const isCacheable = method === 'GET' && !url.searchParams.has('no-cache');
+
+    if (isCacheable) {
+      const cacheKey = new Request(url.toString(), request);
+      const cache = caches.default;
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        return cached;
+      }
     }
 
     for (const route of this.routes) {
@@ -78,14 +88,28 @@ export class Router {
       const match = route.regex.exec(pathname);
       if (!match) continue;
 
-      // 构建 params 对象
       const params: Record<string, string> = {};
       route.paramNames.forEach((name, i) => {
         params[name] = match[i + 1];
       });
 
       try {
-        return await route.handler(request, env, params);
+        const response = await route.handler(request, env, params);
+
+        if (isCacheable && response.ok) {
+          const headers = new Headers(response.headers);
+          headers.set('Cache-Control', `public, max-age=${CACHE_TTL}`);
+          headers.set('X-Cache', 'miss');
+          const cachedResponse = new Response(response.body, {
+            status: response.status,
+            headers,
+          });
+          const cache = caches.default;
+          cache.put(new Request(url.toString(), request), cachedResponse.clone());
+          return cachedResponse;
+        }
+
+        return response;
       } catch (err) {
         return error(
           '服务器错误: ' + (err instanceof Error ? err.message : String(err)),
@@ -94,7 +118,6 @@ export class Router {
       }
     }
 
-    // 匹配 /api/* 但未找到路由
     return error('接口不存在', 404);
   }
 }

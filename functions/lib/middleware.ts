@@ -30,6 +30,26 @@ export async function requireAuth(
   return { userId: payload.id, username: payload.username };
 }
 
+export async function requireAdmin(
+  request: Request,
+  env: Env,
+): Promise<{ userId: number; username: string; isAdmin: true } | Response> {
+  const authResult = await requireAuth(request, env);
+  if (authResult instanceof Response) return authResult;
+
+  const db = env.DB;
+  const user = await db
+    .prepare('SELECT role FROM users WHERE id = ?')
+    .bind(authResult.userId)
+    .first();
+
+  if (!user || (user as any).role !== 'admin') {
+    return error('需要管理员权限', 403);
+  }
+
+  return { ...authResult, isAdmin: true };
+}
+
 // 可选认证 — 不强制要求登录，但如果有 token 就解析
 export async function optionalAuth(
   request: Request,

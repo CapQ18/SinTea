@@ -54,6 +54,16 @@ export const API = {
     unreadCount: `${API_BASE_URL}/api/notifications/unread-count`,
     readAll: `${API_BASE_URL}/api/notifications/read-all`,
   },
+  admin: {
+    stats: `${API_BASE_URL}/api/admin/stats`,
+    users: `${API_BASE_URL}/api/admin/users`,
+    updateUser: (id: string) => `${API_BASE_URL}/api/admin/users/${id}`,
+    deleteUser: (id: string) => `${API_BASE_URL}/api/admin/users/${id}`,
+    feeds: `${API_BASE_URL}/api/admin/feeds`,
+    updateFeed: (id: string) => `${API_BASE_URL}/api/admin/feeds/${id}`,
+    deleteFeed: (id: string) => `${API_BASE_URL}/api/admin/feeds/${id}`,
+    logs: `${API_BASE_URL}/api/admin/logs`,
+  },
 };
 
 export const getAuthHeaders = () => {

@@ -7,6 +7,7 @@ export interface User {
   nickname: string;
   bio: string;
   createdAt: string;
+  role?: string;
 }
 
 export interface LoginFormData {

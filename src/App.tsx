@@ -22,6 +22,7 @@ const Chat = lazy(() => import('./pages/Chat'));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const Admin = lazy(() => import('./pages/Admin'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen bg-cream">
@@ -70,6 +71,7 @@ const AppContent: React.FC = () => {
         <Route path="/chats" element={<ProtectedRoute><ChatList /></ProtectedRoute>} />
         <Route path="/chat/:userId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         <Route path="/user/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
       </Routes>
       {showNav && <NavBar />}
     </div>
