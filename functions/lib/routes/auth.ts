@@ -28,7 +28,7 @@ async function sendEmail(env: Env, to: string, subject: string, text: string): P
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'SinTea <noreply@sintea.pages.dev>',
+        from: 'SinTea <onboarding@resend.dev>',
         to,
         subject,
         text,
