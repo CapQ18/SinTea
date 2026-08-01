@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, useLocation, Navigate } from 'reac
 import NavBar from './components/NavBar';
 import InstallBanner from './components/InstallBanner';
 import { isLoggedIn, initTestUsers } from './services/authService';
+import { TermsOfService, PrivacyPolicy, ForgotPassword } from './pages/Legal';
 
 initTestUsers();
 
@@ -57,7 +58,10 @@ const AppContent: React.FC = () => {
       <InstallBanner />
       <Routes>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/" element={<ProtectedRoute><FeedHome /></ProtectedRoute>} />
         <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
         <Route path="/post" element={<ProtectedRoute><FeedPost /></ProtectedRoute>} />

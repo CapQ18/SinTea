@@ -94,7 +94,35 @@ const Profile: React.FC = () => {
     { icon: 'feedback', label: '意见反馈' },
     { icon: 'about', label: '关于' },
     { icon: 'logout', label: '退出登录', isLogout: true },
+    { icon: 'deactivate', label: '注销账号', isDeactivate: true },
   ];
+
+  const handleDeactivate = async () => {
+    if (!window.confirm('⚠️ 确定要注销账号吗？\n\n注销后您的所有数据（动态、评论、点赞、关注关系等）将被永久删除且无法恢复。\n\n请再次确认继续此操作。')) {
+      return;
+    }
+    if (!window.prompt('请输入"我已了解风险，确认注销"并确定继续：')?.includes('我已了解风险')) {
+      return;
+    }
+    try {
+      await request(API.auth.deactivate, { method: 'POST' });
+      alert('账号已注销，感谢您使用 SinTea');
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (e: any) {
+      alert(e?.message || '注销失败，请稍后重试');
+    }
+  };
+
+  const handleSettingsClick = (item: { path?: string; isLogout?: boolean; isDeactivate?: boolean }) => {
+    if (item.isLogout) {
+      handleLogout();
+    } else if (item.isDeactivate) {
+      handleDeactivate();
+    } else if (item.path) {
+      navigate(item.path);
+    }
+  };
 
   const renderIcon = (icon: string) => {
     switch (icon) {
@@ -160,6 +188,13 @@ const Profile: React.FC = () => {
             <path d="M16 17l5-5-5-5M19 12H9" />
           </svg>
         );
+      case 'deactivate':
+        return (
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+            <path d="M10 11v6M14 11v6" />
+          </svg>
+        );
       case 'admin':
         return (
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -168,14 +203,6 @@ const Profile: React.FC = () => {
         );
       default:
         return null;
-    }
-  };
-
-  const handleSettingsClick = (item: { path?: string; isLogout?: boolean }) => {
-    if (item.isLogout) {
-      handleLogout();
-    } else if (item.path) {
-      navigate(item.path);
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { register, login } from '../../services/authService';
 import { RegisterFormData } from '../../types/user';
 
@@ -95,6 +95,8 @@ const Register: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [code, setCode] = useState('');
+  const [agreeTos, setAgreeTos] = useState(false);
+  const [agreeAge, setAgreeAge] = useState(false);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -124,6 +126,16 @@ const Register: React.FC = () => {
 
     if (formData.password.length < 6) {
       setError('密码至少6位');
+      return;
+    }
+
+    if (!agreeTos) {
+      setError('请先阅读并同意《用户协议》和《隐私政策》');
+      return;
+    }
+
+    if (!agreeAge) {
+      setError('请确认您已年满 18 周岁，或在监护人同意下使用本服务');
       return;
     }
 
@@ -282,6 +294,34 @@ const Register: React.FC = () => {
             {error && (
               <div className="text-sm text-center py-1" style={{ color: '#D64545' }}>{error}</div>
             )}
+
+            <div className="space-y-2 text-xs px-1" style={{ color: '#8B7355' }}>
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={agreeTos}
+                  onChange={(e) => setAgreeTos(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded"
+                  style={{ accentColor: '#C4956A' }}
+                />
+                <span>
+                  我已阅读并同意
+                  <Link to="/terms" target="_blank" className="font-medium underline mx-0.5" style={{ color: '#6B4423' }}>《用户协议》</Link>
+                  和
+                  <Link to="/privacy" target="_blank" className="font-medium underline mx-0.5" style={{ color: '#6B4423' }}>《隐私政策》</Link>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={agreeAge}
+                  onChange={(e) => setAgreeAge(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded"
+                  style={{ accentColor: '#C4956A' }}
+                />
+                <span>我已年满 18 周岁，或在监护人同意下使用本服务</span>
+              </label>
+            </div>
 
             <button
               type="submit"

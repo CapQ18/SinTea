@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../../services/authService';
+import { login, sendLoginCode, loginWithCode } from '../../services/authService';
 import { LoginFormData } from '../../types/user';
 
 const TeaMascots: React.FC = () => (
@@ -80,37 +80,90 @@ const TeaMascots: React.FC = () => (
   </div>
 );
 
+const inputCls = 'w-full px-5 py-3.5 rounded-2xl text-base outline-none transition-all';
+const inputStyle = { border: '1.5px solid #E8D5B7', background: '#FFFBF5', color: '#3D3530' } as React.CSSProperties;
+const btnPrimaryStyle: React.CSSProperties = {
+  background: 'linear-gradient(135deg, #F5D0A9 0%, #E8B87D 100%)',
+  color: '#6B4423',
+  boxShadow: '0 4px 12px rgba(232, 184, 125, 0.4)',
+  border: 'none',
+};
+
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<LoginFormData>({
-    username: '',
-    password: '',
-  });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [tab, setTab] = useState<'password' | 'code'>('code');
+
+  // 密码登录
+  const [formData, setFormData] = useState<LoginFormData>({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // 验证码登录
+  const [codeEmail, setCodeEmail] = useState('');
+  const [codeValue, setCodeValue] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [sending, setSending] = useState(false);
+
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const t = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(t);
+    }
+  }, [countdown]);
+
+  // ===== 密码登录 =====
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
     const result = await login(formData);
-    
     if (result.success) {
       navigate('/');
     } else {
       setError(result.message);
     }
-    
+    setIsLoading(false);
+  };
+
+  // ===== 验证码登录 =====
+  const handleSendCode = async () => {
+    if (!codeEmail) { setError('请输入邮箱'); return; }
+    setSending(true);
+    setError('');
+    const result = await sendLoginCode(codeEmail);
+    setSending(false);
+    if (result.success) {
+      setCountdown(60);
+      if (result.demoCode) {
+        setError(`演示模式：验证码为 ${result.demoCode}`);
+      } else {
+        setError('');
+        alert('验证码已发送到您的邮箱');
+      }
+    } else {
+      setError(result.message);
+    }
+  };
+
+  const handleCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!codeEmail) { setError('请输入邮箱'); return; }
+    if (!codeValue) { setError('请输入验证码'); return; }
+    setError('');
+    setIsLoading(true);
+    const result = await loginWithCode(codeEmail, codeValue);
+    if (result.success) {
+      navigate('/');
+    } else {
+      setError(result.message);
+    }
     setIsLoading(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   return (
@@ -125,81 +178,144 @@ const Login: React.FC = () => {
         <TeaMascots />
 
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 mt-4" style={{ boxShadow: '0 8px 32px rgba(139, 115, 85, 0.12)', border: '1px solid rgba(139, 115, 85, 0.1)' }}>
-          <h2 className="text-2xl font-bold text-center mb-8 tracking-widest" style={{ color: '#6B4423' }}>
-            登 录
-          </h2>
+          {/* Tab 切换 */}
+          <div className="flex mb-6 rounded-2xl p-1" style={{ background: '#F5EDE0' }}>
+            <button
+              type="button"
+              onClick={() => { setTab('code'); setError(''); }}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+              style={tab === 'code' ? { background: 'white', color: '#6B4423', boxShadow: '0 2px 8px rgba(139,115,85,0.1)' } : { color: '#8B7355' }}
+            >
+              验证码登录
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTab('password'); setError(''); }}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+              style={tab === 'password' ? { background: 'white', color: '#6B4423', boxShadow: '0 2px 8px rgba(139,115,85,0.1)' } : { color: '#8B7355' }}
+            >
+              密码登录
+            </button>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
+          {/* 验证码登录 */}
+          {tab === 'code' && (
+            <form onSubmit={handleCodeSubmit} className="space-y-5">
+              <input
+                type="email"
+                value={codeEmail}
+                onChange={(e) => setCodeEmail(e.target.value)}
+                placeholder="请输入邮箱"
+                className={inputCls}
+                style={inputStyle}
+                onFocus={(e) => e.target.style.borderColor = '#C4956A'}
+                onBlur={(e) => e.target.style.borderColor = '#E8D5B7'}
+                required
+              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={codeValue}
+                  onChange={(e) => setCodeValue(e.target.value)}
+                  placeholder="请输入验证码"
+                  className={inputCls + ' pr-28'}
+                  style={inputStyle}
+                  onFocus={(e) => e.target.style.borderColor = '#C4956A'}
+                  onBlur={(e) => e.target.style.borderColor = '#E8D5B7'}
+                  required
+                />
+                <button
+                  type="button"
+                  disabled={countdown > 0 || sending}
+                  onClick={handleSendCode}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded-xl text-sm font-medium"
+                  style={{ background: (countdown > 0 || sending) ? '#E8D5B7' : '#F5D0A9', color: '#6B4423' }}
+                >
+                  {sending ? '发送中' : countdown > 0 ? `${countdown}s` : '发送验证码'}
+                </button>
+              </div>
+
+              {error && <div className="text-sm text-center py-2" style={{ color: '#D64545' }}>{error}</div>}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3.5 rounded-2xl text-base font-semibold tracking-wider transition-all active:scale-95"
+                style={btnPrimaryStyle}
+              >
+                {isLoading ? '登录中...' : '登 录'}
+              </button>
+
+              <p className="text-xs text-center" style={{ color: '#A89580' }}>
+                新用户输入邮箱即可自动注册
+              </p>
+            </form>
+          )}
+
+          {/* 密码登录 */}
+          {tab === 'password' && (
+            <form onSubmit={handlePasswordSubmit} className="space-y-5">
               <input
                 type="text"
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                placeholder="请输入手机号/邮箱/用户名"
-                className="w-full px-5 py-3.5 rounded-2xl text-base outline-none transition-all"
-                style={{ border: '1.5px solid #E8D5B7', background: '#FFFBF5', color: '#3D3530' }}
+                placeholder="请输入用户名/邮箱"
+                className={inputCls}
+                style={inputStyle}
                 onFocus={(e) => e.target.style.borderColor = '#C4956A'}
                 onBlur={(e) => e.target.style.borderColor = '#E8D5B7'}
                 required
               />
-            </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="请输入密码"
+                  className={inputCls + ' pr-12'}
+                  style={inputStyle}
+                  onFocus={(e) => e.target.style.borderColor = '#C4956A'}
+                  onBlur={(e) => e.target.style.borderColor = '#E8D5B7'}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1"
+                  style={{ color: '#B8A088' }}
+                >
+                  {showPassword ? (
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
 
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="请输入密码"
-                className="w-full px-5 py-3.5 pr-12 rounded-2xl text-base outline-none transition-all"
-                style={{ border: '1.5px solid #E8D5B7', background: '#FFFBF5', color: '#3D3530' }}
-                onFocus={(e) => e.target.style.borderColor = '#C4956A'}
-                onBlur={(e) => e.target.style.borderColor = '#E8D5B7'}
-                required
-              />
+              {error && <div className="text-sm text-center py-2" style={{ color: '#D64545' }}>{error}</div>}
+
               <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-1"
-                style={{ color: '#B8A088' }}
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3.5 rounded-2xl text-base font-semibold tracking-wider transition-all active:scale-95"
+                style={btnPrimaryStyle}
               >
-                {showPassword ? (
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
+                {isLoading ? '登录中...' : '登 录'}
               </button>
-            </div>
-
-            {error && (
-              <div className="text-sm text-center py-2" style={{ color: '#D64545' }}>{error}</div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 rounded-2xl text-base font-semibold tracking-wider transition-all active:scale-95"
-              style={{
-                background: 'linear-gradient(135deg, #F5D0A9 0%, #E8B87D 100%)',
-                color: '#6B4423',
-                boxShadow: '0 4px 12px rgba(232, 184, 125, 0.4)',
-                border: 'none',
-              }}
-            >
-              {isLoading ? '登录中...' : '登 录'}
-            </button>
-          </form>
+            </form>
+          )}
 
           <div className="mt-6 flex justify-between text-sm" style={{ color: '#8B7355' }}>
             <button
               type="button"
-              onClick={() => alert('请联系管理员重置密码')}
+              onClick={() => navigate('/forgot-password')}
               className="hover:underline"
             >
               忘记密码
@@ -212,6 +328,13 @@ const Login: React.FC = () => {
             >
               注册
             </button>
+          </div>
+
+          <div className="mt-6 pt-4 border-t text-xs text-center" style={{ borderColor: '#F0E6D2', color: '#A89580' }}>
+            登录即代表您同意
+            <a href="#/terms" target="_blank" className="underline mx-1" style={{ color: '#6B4423' }}>《用户协议》</a>
+            与
+            <a href="#/privacy" target="_blank" className="underline mx-1" style={{ color: '#6B4423' }}>《隐私政策》</a>
           </div>
         </div>
       </div>

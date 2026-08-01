@@ -48,6 +48,38 @@ export const logout = (): void => {
   localStorage.removeItem(CURRENT_USER_KEY);
 };
 
+// 发送登录验证码
+export const sendLoginCode = async (email: string): Promise<{ success: boolean; message: string; demoCode?: string }> => {
+  try {
+    const data = await request<{ success: boolean; message: string; demoCode?: string }>(API.auth.codeSend, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+    return data;
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : '验证码发送失败' };
+  }
+};
+
+// 验证码登录（新用户自动注册）
+export const loginWithCode = async (email: string, code: string): Promise<{ success: boolean; message: string; user?: User }> => {
+  try {
+    const data = await request<{ success: boolean; message: string; user?: User; token?: string }>(API.auth.codeVerify, {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    });
+    if (data.success && data.token) {
+      setToken(data.token);
+      if (data.user) {
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(data.user));
+      }
+    }
+    return data;
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : '登录失败' };
+  }
+};
+
 export const getCurrentUser = (): User | null => {
   const data = localStorage.getItem(CURRENT_USER_KEY);
   return data ? JSON.parse(data) : null;

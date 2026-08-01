@@ -2,9 +2,14 @@ const API_BASE_URL = '';  // 始终用相对路径：prod 走 Pages Functions，
 
 export const API = {
   auth: {
-    register: `${API_BASE_URL}/api/auth/register`,
     login: `${API_BASE_URL}/api/auth/login`,
+    register: `${API_BASE_URL}/api/auth/register`,
     me: `${API_BASE_URL}/api/auth/me`,
+    deactivate: `${API_BASE_URL}/api/auth/deactivate`,
+    resetRequest: `${API_BASE_URL}/api/auth/reset/request`,
+    resetConfirm: `${API_BASE_URL}/api/auth/reset/confirm`,
+    codeSend: `${API_BASE_URL}/api/auth/code/send`,
+    codeVerify: `${API_BASE_URL}/api/auth/code/verify`,
   },
   users: {
     get: (id: string) => `${API_BASE_URL}/api/users/${id}`,

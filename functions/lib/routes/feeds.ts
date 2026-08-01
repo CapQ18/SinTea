@@ -1,79 +1,133 @@
-// 动态路由
+// 动态路由（更新：XSS 净化 + 限流 + 输出过滤）
 
 import type { Router } from '../router';
 import type { Env } from '../env';
 import { ok, error } from '../response';
 import { requireAuth } from '../middleware';
 import { createNotification } from './notifications';
+import { sanitizePlainText, escapeHtml } from '../security/sanitize';
+import { rateLimit, RATE_LIMIT_PRESETS } from '../security/rateLimit';
 
-// 安全头像 URL：base64 数据太长，list 接口不返回
 function safeAvatar(username: string, raw?: string): string {
   if (raw && !raw.startsWith('data:') && raw.length < 500) return raw;
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
 }
 
+// 六维评分的合法取值范围
+function clampScore(v: any, def = 50): number {
+  const n = Number(v);
+  if (Number.isNaN(n)) return def;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+function clampRating(v: any): number {
+  const n = Number(v);
+  if (Number.isNaN(n)) return 3;
+  return Math.max(1, Math.min(5, Math.round(n)));
+}
+
+const VALID_TYPES = new Set(['recommend', 'neutral', 'avoid']);
+function sanitizeType(t: any): 'recommend' | 'neutral' | 'avoid' {
+  return VALID_TYPES.has(t) ? t : 'neutral';
+}
+
+function parseImages(dbImages: any): { count: number; list: string[] } {
+  try {
+    const arr = dbImages ? JSON.parse(dbImages) : [];
+    if (!Array.isArray(arr)) return { count: 0, list: [] };
+    const list = arr.filter((x: any) => typeof x === 'string' && x.length > 0);
+    return { count: list.length, list };
+  } catch {
+    return { count: 0, list: [] };
+  }
+}
+
+function sanitizeComment(c: any): any {
+  return {
+    ...c,
+    nickname: c.nickname ? escapeHtml(c.nickname) : c.nickname,
+    username: c.username ? escapeHtml(c.username) : c.username,
+    avatar: c.avatar ? safeAvatar(c.username, c.avatar) : safeAvatar(c.username || ''),
+    content: c.content ? sanitizePlainText(c.content, 2000) : '',
+  };
+}
+
+function enrichFeed(f: any, opts: { fullImages?: boolean; includeComments?: boolean } = {}) {
+  const { count, list } = parseImages(f.images);
+  const clean = {
+    ...f,
+    nickname: escapeHtml(f.nickname || ''),
+    username: escapeHtml(f.username || ''),
+    content: sanitizePlainText(f.content, 5000),
+    shopName: f.shopName ? escapeHtml(f.shopName) : f.shopName,
+    drinkName: f.drinkName ? escapeHtml(f.drinkName) : f.drinkName,
+    type: sanitizeType(f.type),
+    rating: clampRating(f.rating),
+    sweetness: clampScore(f.sweetness, 50),
+    tea: clampScore(f.tea, 50),
+    milk: clampScore(f.milk, 50),
+    taste: clampScore(f.taste, 50),
+    coolness: clampScore(f.coolness, 50),
+    appearance: clampScore(f.appearance, 50),
+    featured: f.featured ? 1 : 0,
+    avatar: safeAvatar(f.username),
+    imageCount: count,
+    images: opts.fullImages ? list : undefined,
+  };
+  return clean;
+}
+
 export function registerRoutes(router: Router): void {
-  // GET /api/feeds — 动态列表（支持分页和排序）
+  // GET /api/feeds — 动态列表（分页 + 排序）
   router.get('/api/feeds', async (request, env) => {
     const db = env.DB;
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50);
     const offset = (page - 1) * limit;
-    const sort = url.searchParams.get('sort') || 'new'; // 'new' | 'hot'
+    const sort = url.searchParams.get('sort') || 'new'; // new | hot | featured
 
+    const where = sort === 'featured' ? 'WHERE f.featured = 1' : '';
     const orderBy = sort === 'hot'
       ? 'f.likes DESC, f.createdAt DESC'
       : 'f.createdAt DESC';
 
-    const results = await db
-      .prepare(
-        `SELECT f.*, u.username, u.nickname FROM feeds f JOIN users u ON f.userId = u.id ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-      )
-      .bind(limit, offset)
-      .all();
+    const sql = `SELECT f.*, u.username, u.nickname FROM feeds f JOIN users u ON f.userId = u.id ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`;
+    const results = await db.prepare(sql).bind(limit, offset).all();
+    const countResult = (await db.prepare(`SELECT COUNT(*) as total FROM feeds f ${where}`).first()) as any;
 
-	    // 获取总数用于分页
-	    const countResult = (await db
-	      .prepare('SELECT COUNT(*) as total FROM feeds')
-	      .first()) as any;
+    const ids: number[] = (results.results as any[]).map((r) => r.id);
+    let commentsMap = new Map<number, any[]>();
+    let likesMap = new Map<number, number>();
 
-	    const feedsWithData = await Promise.all(
-	      (results.results as any[]).map(async (feed: any) => {
-	        const comments = await db
-	          .prepare(
-	            'SELECT c.*, u.username, u.nickname FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId = ? ORDER BY c.createdAt DESC',
-	          )
-	          .bind(feed.id)
-	          .all();
+    if (ids.length > 0) {
+      const placeholders = ids.map(() => '?').join(',');
+      const allComments = await db
+        .prepare(
+          `SELECT c.*, u.username, u.nickname FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId IN (${placeholders}) ORDER BY c.createdAt DESC`
+        )
+        .bind(...ids)
+        .all();
+      for (const c of allComments.results as any[]) {
+        const arr = commentsMap.get(c.feedId) || [];
+        arr.push(sanitizeComment(c));
+        commentsMap.set(c.feedId, arr);
+      }
+      const allLikes = (await db
+        .prepare(`SELECT feedId, COUNT(*) as c FROM likes WHERE feedId IN (${placeholders}) GROUP BY feedId`)
+        .bind(...ids)
+        .all()).results as any[];
+      for (const l of allLikes) likesMap.set(l.feedId, Number(l.c || 0));
+    }
 
-	        const likeCount = (await db
-	          .prepare('SELECT COUNT(*) as count FROM likes WHERE feedId = ?')
-	          .bind(feed.id)
-	          .first()) as any;
-
-	        // 列表不返回 base64 图片数据，只返回数量（减小响应体积）
-	        let imageCount = 0;
-	        if (feed.images) {
-	          try {
-	            const imgs = JSON.parse(feed.images);
-	            imageCount = Array.isArray(imgs) ? imgs.length : 0;
-	          } catch { /* ignore */ }
-	        }
-
-	        return {
-	          ...feed,
-	          avatar: safeAvatar(feed.username),
-	          images: undefined,     // 列表不传图片数据
-	          imageCount,            // 只传数量
-	          comments: comments.results,
-	          likes: likeCount?.count || 0,
-	        };
-	      }),
-	    );
+    const feeds = (results.results as any[]).map((f) => ({
+      ...enrichFeed(f, { includeComments: false }),
+      comments: commentsMap.get(f.id) || [],
+      likes: likesMap.get(f.id) || 0,
+    }));
 
     return ok({
-      feeds: feedsWithData,
+      feeds,
       total: countResult?.total || 0,
       page,
       limit,
@@ -82,41 +136,31 @@ export function registerRoutes(router: Router): void {
     });
   });
 
-  // GET /api/feeds/:id — 动态详情
+  // GET /api/feeds/:id — 动态详情（返回完整图片 + 评论）
   router.get('/api/feeds/:id', async (request, env, params) => {
     const db = env.DB;
     const feedId = parseInt(params.id);
     if (isNaN(feedId)) return error('无效的动态ID', 400);
 
     const feed = (await db
-      .prepare(
-        'SELECT f.*, u.username, u.nickname FROM feeds f JOIN users u ON f.userId = u.id WHERE f.id = ?',
-      )
+      .prepare('SELECT f.*, u.username, u.nickname FROM feeds f JOIN users u ON f.userId = u.id WHERE f.id = ?')
       .bind(feedId)
       .first()) as any;
-
-    if (!feed) {
-      return error('动态不存在', 404);
-    }
+    if (!feed) return error('动态不存在', 404);
 
     const comments = await db
       .prepare(
-        'SELECT c.*, u.username, u.nickname, u.avatar FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId = ? ORDER BY c.createdAt DESC',
+        'SELECT c.*, u.username, u.nickname, u.avatar FROM comments c JOIN users u ON c.userId = u.id WHERE c.feedId = ? ORDER BY c.createdAt DESC'
       )
       .bind(feedId)
       .all();
 
-    const likeCount = (await db
-      .prepare('SELECT COUNT(*) as count FROM likes WHERE feedId = ?')
-      .bind(feedId)
-      .first()) as any;
+    const likeCount = (await db.prepare('SELECT COUNT(*) as count FROM likes WHERE feedId = ?').bind(feedId).first()) as any;
 
     return ok({
       feed: {
-        ...feed,
-        avatar: safeAvatar(feed.username),
-        images: feed.images ? JSON.parse(feed.images) : [],
-        comments: comments.results,
+        ...enrichFeed(feed, { fullImages: true }),
+        comments: (comments.results as any[]).map(sanitizeComment),
         likes: likeCount?.count || 0,
       },
     });
@@ -124,58 +168,65 @@ export function registerRoutes(router: Router): void {
 
   // POST /api/feeds — 发布动态
   router.post('/api/feeds', async (request, env) => {
+    const rl = await rateLimit(request, env, RATE_LIMIT_PRESETS.post);
+    if (rl.limited) return error(`发帖过于频繁，请 ${rl.retryAfter} 秒后再试`, 429);
+
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
 
     const db = env.DB;
     const body: any = await request.json();
-    const {
-      shopName,
-      drinkName,
-      content,
-      type,
-      rating,
-      images,
-      sweetness,
-      tea,
-      milk,
-      taste,
-      coolness,
-      appearance,
-    } = body;
 
-    const imagesJson = images ? JSON.stringify(images) : null;
+    const content = sanitizePlainText(body?.content, 5000);
+    if (!content || content.length < 1) return error('动态内容不能为空', 400);
 
-    // 限制图片总大小：单张 base64 不超过 200KB，总计不超过 1MB
-    if (images && Array.isArray(images)) {
-      for (const img of images) {
-        if (typeof img === 'string' && img.length > 280000) { // ~200KB base64
-          return error('图片过大，请选择更小的图片或降低质量', 400);
-        }
-      }
-      if (imagesJson && imagesJson.length > 1200000) { // ~1MB total
-        return error('图片总大小超过限制，请减少图片数量', 400);
-      }
+    const shopName = body?.shopName ? escapeHtml(body.shopName).slice(0, 50) : '';
+    const drinkName = body?.drinkName ? escapeHtml(body.drinkName).slice(0, 50) : '';
+    const type = sanitizeType(body?.type);
+    const rating = clampRating(body?.rating);
+    const sweetness = clampScore(body?.sweetness, 50);
+    const tea = clampScore(body?.tea, 50);
+    const milk = clampScore(body?.milk, 50);
+    const taste = clampScore(body?.taste, 50);
+    const coolness = clampScore(body?.coolness, 50);
+    const appearance = clampScore(body?.appearance, 50);
+
+    // 图片校验
+    const rawImages: any[] = Array.isArray(body?.images) ? body.images : [];
+    const safeImages: string[] = [];
+    let totalLen = 0;
+    for (const img of rawImages) {
+      if (typeof img !== 'string') continue;
+      // 只允许 data:image 或 https:// 开头
+      if (!img.startsWith('data:image/') && !img.startsWith('https://')) continue;
+      if (img.length > 280_000) continue; // ~200KB
+      safeImages.push(img);
+      totalLen += img.length;
+      if (safeImages.length >= 9) break; // 最多 9 张
     }
+    if (totalLen > 1_200_000) return error('图片总大小超过限制，请减少数量', 400);
+
+    const imagesJson = safeImages.length ? JSON.stringify(safeImages) : null;
 
     const result = await db
       .prepare(
-        'INSERT INTO feeds (userId, shopName, drinkName, content, type, rating, images, sweetness, tea, milk, taste, coolness, appearance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        `INSERT INTO feeds (userId, shopName, drinkName, content, type, rating, images, sweetness, tea, milk, taste, coolness, appearance)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         auth.userId,
-        shopName || '',
-        drinkName || '',
-        content || '',
-        type || 'neutral',
-        rating || 3,
+        shopName,
+        drinkName,
+        content,
+        type,
+        rating,
         imagesJson,
-        sweetness || 50,
-        tea || 50,
-        milk || 50,
-        taste || 50,
-        coolness || 50,
-        appearance || 50,
+        sweetness,
+        tea,
+        milk,
+        taste,
+        coolness,
+        appearance,
       )
       .run();
 
@@ -197,45 +248,28 @@ export function registerRoutes(router: Router): void {
       .first();
 
     let liked: boolean;
-
     if (existing) {
-      await db
-        .prepare('DELETE FROM likes WHERE userId = ? AND feedId = ?')
-        .bind(auth.userId, feedId)
-        .run();
+      await db.prepare('DELETE FROM likes WHERE userId = ? AND feedId = ?').bind(auth.userId, feedId).run();
       liked = false;
     } else {
-      await db
-        .prepare('INSERT INTO likes (userId, feedId) VALUES (?, ?)')
-        .bind(auth.userId, feedId)
-        .run();
+      await db.prepare('INSERT INTO likes (userId, feedId) VALUES (?, ?)').bind(auth.userId, feedId).run();
       liked = true;
-
-      // 通知动态作者
-      const feedAuthor = (await db
-        .prepare('SELECT userId FROM feeds WHERE id = ?')
-        .bind(feedId)
-        .first()) as any;
-      if (feedAuthor) {
-        await createNotification(db, 'like', feedAuthor.userId, auth.userId, { feedId });
-      }
+      const feedAuthor = (await db.prepare('SELECT userId FROM feeds WHERE id = ?').bind(feedId).first()) as any;
+      if (feedAuthor) await createNotification(db, 'like', feedAuthor.userId, auth.userId, { feedId });
     }
 
-    // 同步更新 feeds 表的 likes 计数
-    const likeCount = (await db
-      .prepare('SELECT COUNT(*) as count FROM likes WHERE feedId = ?')
-      .bind(feedId)
-      .first()) as any;
-    await db
-      .prepare('UPDATE feeds SET likes = ? WHERE id = ?')
-      .bind(likeCount?.count || 0, feedId)
-      .run();
+    const likeCount = (await db.prepare('SELECT COUNT(*) as count FROM likes WHERE feedId = ?').bind(feedId).first()) as any;
+    const likes = Number(likeCount?.count || 0);
+    await db.prepare('UPDATE feeds SET likes = ? WHERE id = ?').bind(likes, feedId).run();
 
-    return ok({ liked, likes: likeCount?.count || 0 });
+    return ok({ liked, likes });
   });
 
   // POST /api/feeds/:id/comments — 发表评论
   router.post('/api/feeds/:id/comments', async (request, env, params) => {
+    const rl = await rateLimit(request, env, RATE_LIMIT_PRESETS.comment);
+    if (rl.limited) return error(`评论过于频繁，请 ${rl.retryAfter} 秒后再试`, 429);
+
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
 
@@ -244,26 +278,19 @@ export function registerRoutes(router: Router): void {
     if (isNaN(feedId)) return error('无效的动态ID', 400);
 
     const body: any = await request.json();
-    const { content } = body;
-
-    if (!content || !content.trim()) {
-      return error('评论内容不能为空', 400);
-    }
+    const content = sanitizePlainText(body?.content, 2000);
+    if (!content) return error('评论内容不能为空', 400);
 
     const result = await db
       .prepare('INSERT INTO comments (feedId, userId, content) VALUES (?, ?, ?)')
-      .bind(feedId, auth.userId, content.trim())
+      .bind(feedId, auth.userId, content)
       .run();
 
-    // 通知动态作者
-    const feedAuthor = (await db
-      .prepare('SELECT userId FROM feeds WHERE id = ?')
-      .bind(feedId)
-      .first()) as any;
-    if (feedAuthor) {
-      await createNotification(db, 'comment', feedAuthor.userId, auth.userId, {
+    const feedAuthor = (await db.prepare('SELECT userId FROM feeds WHERE id = ?').bind(feedId).first()) as any;
+    if (feedAuthor && feedAuthor.userId !== auth.userId) {
+      await createNotification(db, 'comment', Number(feedAuthor.userId), auth.userId, {
         feedId,
-        commentContent: content.trim().substring(0, 100),
+        commentContent: content.substring(0, 100),
       });
     }
 
@@ -279,15 +306,10 @@ export function registerRoutes(router: Router): void {
     const feedId = parseInt(params.id);
     if (isNaN(feedId)) return error('无效的动态ID', 400);
 
-    const feed = (await db
-      .prepare('SELECT userId FROM feeds WHERE id = ?')
-      .bind(feedId)
-      .first()) as any;
-
+    const feed = (await db.prepare('SELECT userId FROM feeds WHERE id = ?').bind(feedId).first()) as any;
     if (!feed) return error('动态不存在', 404);
     if (feed.userId !== auth.userId) return error('只能删除自己的动态', 403);
 
-    // 删除关联数据
     await db.prepare('DELETE FROM likes WHERE feedId = ?').bind(feedId).run();
     await db.prepare('DELETE FROM comments WHERE feedId = ?').bind(feedId).run();
     await db.prepare('DELETE FROM notifications WHERE feedId = ?').bind(feedId).run();
@@ -306,11 +328,7 @@ export function registerRoutes(router: Router): void {
     const commentId = parseInt(params.commentId);
     if (isNaN(feedId) || isNaN(commentId)) return error('无效的ID', 400);
 
-    const comment = (await db
-      .prepare('SELECT userId FROM comments WHERE id = ? AND feedId = ?')
-      .bind(commentId, feedId)
-      .first()) as any;
-
+    const comment = (await db.prepare('SELECT userId FROM comments WHERE id = ? AND feedId = ?').bind(commentId, feedId).first()) as any;
     if (!comment) return error('评论不存在', 404);
     if (comment.userId !== auth.userId) return error('只能删除自己的评论', 403);
 
@@ -327,22 +345,28 @@ export function registerRoutes(router: Router): void {
     const feedId = parseInt(params.id);
     if (isNaN(feedId)) return error('无效的动态ID', 400);
 
-    const feed = (await db
-      .prepare('SELECT userId FROM feeds WHERE id = ?')
-      .bind(feedId)
-      .first()) as any;
-
+    const feed = (await db.prepare('SELECT userId FROM feeds WHERE id = ?').bind(feedId).first()) as any;
     if (!feed) return error('动态不存在', 404);
     if (feed.userId !== auth.userId) return error('只能编辑自己的动态', 403);
 
     const body: any = await request.json();
-    const { content, rating, type, shopName, drinkName } = body;
+    const content = body?.content != null ? sanitizePlainText(body.content, 5000) : undefined;
+    const rating = body?.rating != null ? clampRating(body.rating) : undefined;
+    const type = body?.type != null ? sanitizeType(body.type) : undefined;
+    const shopName = body?.shopName != null ? escapeHtml(body.shopName).slice(0, 50) : undefined;
+    const drinkName = body?.drinkName != null ? escapeHtml(body.drinkName).slice(0, 50) : undefined;
 
     await db
       .prepare(
-        'UPDATE feeds SET content = COALESCE(?, content), rating = COALESCE(?, rating), type = COALESCE(?, type), shopName = COALESCE(?, shopName), drinkName = COALESCE(?, drinkName) WHERE id = ?',
+        `UPDATE feeds
+         SET content   = COALESCE(?, content),
+             rating    = COALESCE(?, rating),
+             type      = COALESCE(?, type),
+             shopName  = COALESCE(?, shopName),
+             drinkName = COALESCE(?, drinkName)
+         WHERE id = ?`
       )
-      .bind(content || null, rating || null, type || null, shopName || null, drinkName || null, feedId)
+      .bind(content || null, rating ?? null, type || null, shopName ?? null, drinkName ?? null, feedId)
       .run();
 
     return ok({});
