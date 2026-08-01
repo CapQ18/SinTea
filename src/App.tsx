@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import InstallBanner from './components/InstallBanner';
+import Footer from './components/Footer';
 import { isLoggedIn, initTestUsers } from './services/authService';
 import { TermsOfService, PrivacyPolicy, ForgotPassword } from './pages/Legal';
 
@@ -78,6 +79,7 @@ const AppContent: React.FC = () => {
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
       </Routes>
       {showNav && <NavBar />}
+      <Footer />
     </div>
   );
 };
