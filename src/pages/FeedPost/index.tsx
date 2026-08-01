@@ -235,11 +235,10 @@ const FeedPost: React.FC = () => {
         <h1 className="text-lg font-semibold text-text-primary">写评价</h1>
         <button
           onClick={handlePost}
-          disabled={!isFormValid || isPosting}
           className={`px-4 py-1.5 rounded-button text-sm font-medium transition-all min-w-[60px] ${
             isFormValid && !isPosting
               ? 'btn-primary'
-              : 'bg-bg-gray text-text-gray cursor-not-allowed'
+              : 'bg-bg-gray text-text-gray'
           }`}
         >
           {isPosting ? '发布中' : '发布'}
@@ -307,24 +306,24 @@ const FeedPost: React.FC = () => {
               </div>
 
               <div className="p-4 border-b border-border-light">
-                <span className="text-sm font-medium text-text-primary mb-3 block">店铺信息</span>
+                <span className="text-sm font-medium text-text-primary mb-3 block">店铺信息 <span className="text-warning">*</span></span>
                 <input
                   type="text"
                   value={shopName}
                   onChange={(e) => setShopName(e.target.value)}
                   placeholder="奶茶店名"
-                  className="input-field"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none border border-border-light focus:border-primary bg-bg-gray/30"
                 />
               </div>
 
               <div className="p-4 border-b border-border-light">
-                <span className="text-sm font-medium text-text-primary mb-3 block">奶茶名称</span>
+                <span className="text-sm font-medium text-text-primary mb-3 block">奶茶名称 <span className="text-warning">*</span></span>
                 <input
                   type="text"
                   value={drinkName}
                   onChange={(e) => setDrinkName(e.target.value)}
                   placeholder="奶茶名"
-                  className="input-field"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none border border-border-light focus:border-primary bg-bg-gray/30"
                 />
               </div>
 
@@ -352,13 +351,13 @@ const FeedPost: React.FC = () => {
               </div>
 
               <div className="p-4 border-b border-border-light">
-                <span className="text-sm font-medium text-text-primary mb-3 block">评价内容</span>
+                <span className="text-sm font-medium text-text-primary mb-3 block">评价内容 <span className="text-warning">*</span></span>
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="添加具体评价"
                   rows={4}
-                  className="w-full text-sm text-text-secondary placeholder:text-text-gray bg-transparent border-none outline-none resize-none leading-relaxed"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none border border-border-light focus:border-primary bg-bg-gray/30 resize-none leading-relaxed"
                 />
               </div>
 
