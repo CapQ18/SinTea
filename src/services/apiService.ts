@@ -99,6 +99,16 @@ export const request = async <T>(url: string, options: RequestInit = {}): Promis
       },
     });
 
+    // 401 会话过期：清除 token 并跳转登录
+    if (response.status === 401) {
+      removeToken();
+      localStorage.removeItem('sintea_user');
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      throw new Error('登录已过期，请重新登录');
+    }
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: '请求失败' }));
       throw new Error(error.message || '请求失败');

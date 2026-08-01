@@ -1,5 +1,7 @@
-const MAX_IMAGE_SIZE = 200 * 1024;
+const MAX_IMAGE_SIZE = 150 * 1024; // 150KB（后端限制 280KB，留足余量）
 const MAX_DIMENSION = 800;
+const MIN_DIMENSION = 400;
+const MIN_QUALITY = 0.2;
 
 export async function compressImage(file: File | string): Promise<string> {
   let dataUrl: string;
@@ -18,6 +20,7 @@ export async function compressImage(file: File | string): Promise<string> {
   let width = img.width;
   let height = img.height;
 
+  // 缩放到最大尺寸
   if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
     if (width > height) {
       height = Math.round(height * (MAX_DIMENSION / width));
@@ -28,17 +31,30 @@ export async function compressImage(file: File | string): Promise<string> {
     }
   }
 
-  const canvas = document.createElement('canvas');
+  let canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext('2d')!;
+  let ctx = canvas.getContext('2d')!;
   ctx.drawImage(img, 0, 0, width, height);
 
   let quality = 0.8;
   let result = canvas.toDataURL('image/jpeg', quality);
 
-  while (estimateBase64Size(result) > MAX_IMAGE_SIZE && quality > 0.3) {
+  // 阶段一：降低质量
+  while (estimateBase64Size(result) > MAX_IMAGE_SIZE && quality > MIN_QUALITY) {
     quality -= 0.1;
+    result = canvas.toDataURL('image/jpeg', quality);
+  }
+
+  // 阶段二：如果仍超限，缩小尺寸再压缩
+  while (estimateBase64Size(result) > MAX_IMAGE_SIZE && width > MIN_DIMENSION && height > MIN_DIMENSION) {
+    width = Math.round(width * 0.7);
+    height = Math.round(height * 0.7);
+    canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0, width, height);
     result = canvas.toDataURL('image/jpeg', quality);
   }
 

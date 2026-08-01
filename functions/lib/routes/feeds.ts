@@ -199,7 +199,7 @@ export function registerRoutes(router: Router): void {
       if (typeof img !== 'string') continue;
       // 只允许 data:image 或 https:// 开头
       if (!img.startsWith('data:image/') && !img.startsWith('https://')) continue;
-      if (img.length > 280_000) continue; // ~200KB
+      if (img.length > 280_000) return error('图片过大，请选择更小的图片', 400);
       safeImages.push(img);
       totalLen += img.length;
       if (safeImages.length >= 9) break; // 最多 9 张
