@@ -14,6 +14,7 @@ import { registerRoutes as registerFollows } from './lib/routes/follows';
 import { registerRoutes as registerChats } from './lib/routes/chats';
 import { registerRoutes as registerNotifications } from './lib/routes/notifications';
 import { registerRoutes as registerSearch } from './lib/routes/search';
+import { registerRoutes as registerReports } from './lib/routes/reports';
 import { registerRoutes as registerAdmin } from './lib/routes/admin';
 
 // 构建路由表
@@ -42,6 +43,7 @@ registerFollows(router);
 registerChats(router);
 registerNotifications(router);
 registerSearch(router);
+registerReports(router);
 registerAdmin(router);
 
 // Pages Functions handler

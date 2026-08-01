@@ -182,6 +182,80 @@ export function registerRoutes(router: Router): void {
     });
   });
 
-  // unused（保留 import，避免 tree-shaking 告警）
-  void RATE_LIMIT_PRESETS;
+  // ===== 用户拉黑/屏蔽 =====
+
+  // POST /api/users/:id/block — 拉黑用户
+  router.post('/api/users/:id/block', async (request, env, params) => {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    const db = env.DB;
+    const targetId = parseInt(params.id);
+    if (targetId === auth.userId) return error('不能拉黑自己', 400);
+
+    await db.prepare(
+      `CREATE TABLE IF NOT EXISTS user_blocks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        blockedUserId INTEGER NOT NULL,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(userId, blockedUserId)
+      )`
+    ).run();
+
+    await db.prepare(
+      'INSERT OR IGNORE INTO user_blocks (userId, blockedUserId) VALUES (?, ?)'
+    ).bind(auth.userId, targetId).run();
+
+    // 自动取消关注
+    await db.prepare('DELETE FROM follows WHERE userId = ? AND targetUserId = ?')
+      .bind(auth.userId, targetId).run();
+
+    return ok({ message: '已拉黑' });
+  });
+
+  // DELETE /api/users/:id/block — 取消拉黑
+  router.delete('/api/users/:id/block', async (request, env, params) => {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    const db = env.DB;
+    const targetId = parseInt(params.id);
+
+    await db.prepare('DELETE FROM user_blocks WHERE userId = ? AND blockedUserId = ?')
+      .bind(auth.userId, targetId).run();
+
+    return ok({ message: '已取消拉黑' });
+  });
+
+  // GET /api/users/blocks — 我的拉黑列表
+  router.get('/api/users/blocks', async (request, env) => {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    const db = env.DB;
+    const result = await db.prepare(
+      `SELECT u.id, u.username, u.nickname, u.avatar
+       FROM user_blocks b
+       JOIN users u ON b.blockedUserId = u.id
+       WHERE b.userId = ?
+       ORDER BY b.createdAt DESC`
+    ).bind(auth.userId).all();
+
+    return ok({ blocks: (result.results as any[]) || [] });
+  });
+
+  // GET /api/users/blocked-ids — 我拉黑的用户 ID 列表（前端用于过滤）
+  router.get('/api/users/blocked-ids', async (request, env) => {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+
+    const db = env.DB;
+    const result = await db.prepare(
+      'SELECT blockedUserId FROM user_blocks WHERE userId = ?'
+    ).bind(auth.userId).all();
+
+    const ids = (result.results as any[]).map(r => r.blockedUserId);
+    return ok({ blockedIds: ids });
+  });
 }

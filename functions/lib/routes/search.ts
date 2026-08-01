@@ -4,21 +4,25 @@ import type { Router } from '../router';
 import { ok, error } from '../response';
 
 export function registerRoutes(router: Router): void {
-  // GET /api/search?q=xxx&type=all|feeds|shops|drinks&page=1&limit=20
+  // GET /api/search?q=xxx&type=all|feeds|shops|drinks|users&sort=hot|time&page=1&limit=20
   router.get('/api/search', async (request, env) => {
     const db = env.DB;
     const url = new URL(request.url);
     const q = (url.searchParams.get('q') || '').trim();
     const type = url.searchParams.get('type') || 'all';
+    const sort = url.searchParams.get('sort') || 'time';
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50);
+    const offset = (page - 1) * limit;
 
     if (!q) {
       return error('请输入搜索关键词', 400);
     }
 
     const searchTerm = `%${q}%`;
+    const orderClause = sort === 'hot' ? 'f.likes DESC, f.createdAt DESC' : 'f.createdAt DESC';
     const results: Record<string, any[]> = {};
+    let total = 0;
 
     // 搜索动态
     if (type === 'all' || type === 'feeds') {
@@ -30,11 +34,20 @@ export function registerRoutes(router: Router): void {
            FROM feeds f
            JOIN users u ON f.userId = u.id
            WHERE f.content LIKE ? OR f.drinkName LIKE ? OR f.shopName LIKE ?
-           ORDER BY f.createdAt DESC
-           LIMIT ?`,
+           ORDER BY ${orderClause}
+           LIMIT ? OFFSET ?`,
         )
-        .bind(searchTerm, searchTerm, searchTerm, limit)
+        .bind(searchTerm, searchTerm, searchTerm, limit, offset)
         .all();
+
+      const feedCount = await db
+        .prepare(
+          `SELECT COUNT(*) as count FROM feeds f
+           WHERE f.content LIKE ? OR f.drinkName LIKE ? OR f.shopName LIKE ?`
+        )
+        .bind(searchTerm, searchTerm, searchTerm)
+        .first();
+      total += (feedCount as any)?.count || 0;
 
       results.feeds = (feeds.results as any[]).map((f: any) => ({
         ...f,
@@ -92,6 +105,6 @@ export function registerRoutes(router: Router): void {
       results.users = users.results;
     }
 
-    return ok({ query: q, type, results });
+    return ok({ query: q, type, sort, results, total, page, hasMore: offset + limit < total });
   });
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FeedItem } from '../types/feed';
 import { API, request } from '../services/apiService';
+import ReportModal from './ReportModal';
 
 interface FeedCardProps {
   item: FeedItem;
@@ -29,6 +30,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
   const [likes, setLikes] = useState(item.likes);
   const [isFollowing, setIsFollowing] = useState(item.user.isFollowing);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   const isOwn = currentUserId != null && Number(item.userId) === currentUserId;
 
@@ -241,9 +243,15 @@ const FeedCard: React.FC<FeedCardProps> = ({
               <svg className="w-5 h-5" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" /></svg>
               <span className="text-xs">{formatNumber(likes)}</span>
             </button>
+            {!isOwn && (
+              <button onClick={(e) => { e.stopPropagation(); setShowReport(true); }} className="flex items-center gap-1 hover:text-red-500 transition-colors text-text-gray">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 22V4a2 2 0 012-2h12a2 2 0 012 2v18l-4-2-4 2-4-2-4 2z" /><path d="M12 8v4M12 16h.01" /></svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
+      {showReport && <ReportModal targetType="feed" targetId={item.id} onClose={() => setShowReport(false)} />}
     </div>
   );
 };

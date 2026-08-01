@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API, request } from '../../services/apiService';
 
 type SearchType = 'all' | 'feeds' | 'shops' | 'drinks' | 'users';
+type SortType = 'time' | 'hot';
 
 interface SearchResult {
   feeds?: any[];
@@ -11,25 +12,52 @@ interface SearchResult {
   users?: any[];
 }
 
+const HISTORY_KEY = 'sintea_search_history';
+const MAX_HISTORY = 10;
+
 const Search: React.FC = () => {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [searchType, setSearchType] = useState<SearchType>('all');
+  const [sort, setSort] = useState<SortType>('time');
   const [results, setResults] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [history, setHistory] = useState<string[]>([]);
 
-  const handleSearch = async () => {
-    const q = query.trim();
-    if (!q) return;
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      if (raw) setHistory(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
+
+  const saveHistory = (q: string) => {
+    const filtered = history.filter(h => h !== q);
+    const next = [q, ...filtered].slice(0, MAX_HISTORY);
+    setHistory(next);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem(HISTORY_KEY);
+  };
+
+  const handleSearch = async (q?: string, s?: SortType) => {
+    const searchTerm = (q ?? query).trim();
+    if (!searchTerm) return;
+    const useSort = s ?? sort;
+    setQuery(searchTerm);
     setLoading(true);
     setError('');
     try {
       const data = await request<{ success: boolean; results?: SearchResult }>(
-        `${API.search}?q=${encodeURIComponent(q)}&type=${searchType}`
+        `${API.search}?q=${encodeURIComponent(searchTerm)}&type=${searchType}&sort=${useSort}`
       );
       if (data.success && data.results) {
         setResults(data.results);
+        saveHistory(searchTerm);
       } else {
         setError('未找到相关内容');
       }
@@ -38,6 +66,11 @@ const Search: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSortChange = (s: SortType) => {
+    setSort(s);
+    if (query.trim()) handleSearch(undefined, s);
   };
 
   const types: { key: SearchType; label: string }[] = [
@@ -78,7 +111,7 @@ const Search: React.FC = () => {
               autoFocus
             />
             <button
-              onClick={handleSearch}
+              onClick={() => handleSearch()}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-text-gray"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -89,21 +122,39 @@ const Search: React.FC = () => {
           </div>
         </div>
 
-        {/* 类型切换 */}
-        <div className="flex gap-2 mt-3">
-          {types.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setSearchType(t.key)}
-              className={`px-3 py-1.5 text-xs rounded-full transition-colors ${
-                searchType === t.key
-                  ? 'bg-primary text-white'
-                  : 'bg-bg-gray text-text-gray'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        {/* 类型切换 + 排序 */}
+        <div className="flex items-center justify-between mt-3">
+          <div className="flex gap-2">
+            {types.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setSearchType(t.key)}
+                className={`px-3 py-1.5 text-xs rounded-full transition-colors ${
+                  searchType === t.key
+                    ? 'bg-primary text-white'
+                    : 'bg-bg-gray text-text-gray'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {(searchType === 'all' || searchType === 'feeds') && results && (
+            <div className="flex gap-1 text-xs">
+              <button
+                onClick={() => handleSortChange('time')}
+                className={`px-2 py-1 rounded ${sort === 'time' ? 'text-primary font-medium' : 'text-text-gray'}`}
+              >
+                最新
+              </button>
+              <button
+                onClick={() => handleSortChange('hot')}
+                className={`px-2 py-1 rounded ${sort === 'hot' ? 'text-primary font-medium' : 'text-text-gray'}`}
+              >
+                热门
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -236,8 +287,32 @@ const Search: React.FC = () => {
         )}
 
         {!results && !loading && !error && (
-          <div className="text-center py-12 text-text-gray text-sm">
-            输入关键词开始搜索
+          <div className="pt-4">
+            {history.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-text-primary">搜索历史</h3>
+                  <button onClick={clearHistory} className="text-xs text-text-gray hover:text-primary">
+                    清空
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {history.map((h, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSearch(h)}
+                      className="px-3 py-1.5 text-xs rounded-full bg-white text-text-secondary border border-border-light hover:border-primary hover:text-primary transition-colors"
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12 text-text-gray text-sm">
+                输入关键词开始搜索
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API, request } from '../../services/apiService';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from 'recharts';
+import ReportModal from '../../components/ReportModal';
 
 interface UserProfile {
   id: number;
@@ -27,6 +28,9 @@ const UserProfilePage: React.FC = () => {
   const [userFeeds, setUserFeeds] = useState<any[]>([]);
   const [feedsPage, setFeedsPage] = useState(1);
   const [hasMoreFeeds, setHasMoreFeeds] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -44,6 +48,14 @@ const UserProfilePage: React.FC = () => {
         const follows = await request<{ success: boolean; follows?: any[] }>(API.follows.list);
         if (follows.success && follows.follows) {
           setIsFollowing(follows.follows.some((f: any) => f.id === parseInt(id!)));
+        }
+      } catch { /* ignore */ }
+
+      // Check block status
+      try {
+        const bl = await request<{ success: boolean; blockedIds?: number[] }>(API.blockIds);
+        if (bl.success && bl.blockedIds) {
+          setIsBlocked(bl.blockedIds.includes(parseInt(id!)));
         }
       } catch { /* ignore */ }
 
@@ -92,6 +104,25 @@ const UserProfilePage: React.FC = () => {
     } catch { /* ignore */ }
   };
 
+  const handleBlock = async () => {
+    setShowMenu(false);
+    if (isBlocked) {
+      try {
+        await request(API.blocks(user!.id), { method: 'DELETE' });
+        setIsBlocked(false);
+        alert('已取消拉黑');
+      } catch { alert('操作失败'); }
+    } else {
+      if (!window.confirm(`确定拉黑 ${user!.nickname || user!.username} 吗？\n拉黑后你们将互不可见，且自动取消关注。`)) return;
+      try {
+        await request(API.blocks(user!.id), { method: 'POST' });
+        setIsBlocked(true);
+        setIsFollowing(false);
+        alert('已拉黑');
+      } catch { alert('操作失败'); }
+    }
+  };
+
   const handleTreat = async (wishlistId: number) => {
     setTreatingId(wishlistId);
     try {
@@ -135,7 +166,23 @@ const UserProfilePage: React.FC = () => {
         <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center text-text-secondary rounded-full hover:bg-bg-gray">
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <h1 className="text-lg font-semibold">{user.nickname || user.username}</h1>
+        <h1 className="text-lg font-semibold flex-1">{user.nickname || user.username}</h1>
+        <button onClick={() => setShowMenu(!showMenu)} className="w-10 h-10 flex items-center justify-center text-text-secondary rounded-full hover:bg-bg-gray">
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
+        </button>
+        {showMenu && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+            <div className="absolute right-4 top-12 z-50 bg-white rounded-xl shadow-lg py-1 min-w-[120px]" style={{ border: '1px solid #E8D5B7' }}>
+              <button onClick={() => { setShowMenu(false); setShowReport(true); }} className="w-full px-4 py-2.5 text-left text-sm hover:bg-bg-gray text-text-primary">
+                举报用户
+              </button>
+              <button onClick={handleBlock} className="w-full px-4 py-2.5 text-left text-sm hover:bg-bg-gray" style={{ color: isBlocked ? '#8B7355' : '#D64545' }}>
+                {isBlocked ? '取消拉黑' : '拉黑用户'}
+              </button>
+            </div>
+          </>
+        )}
       </header>
 
       <div className="px-4 mt-3">
@@ -274,6 +321,7 @@ const UserProfilePage: React.FC = () => {
           )}
         </div>
       </div>
+      {showReport && <ReportModal targetType="user" targetId={user.id} onClose={() => setShowReport(false)} />}
     </div>
   );
 };

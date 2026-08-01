@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { API, request } from '../../services/apiService';
 import { getCurrentUser, logout } from '../../services/authService';
 
-type TabType = 'dashboard' | 'users' | 'feeds' | 'logs';
+type TabType = 'dashboard' | 'users' | 'feeds' | 'logs' | 'reports';
+
+type ReportAction = 'approve' | 'reject' | 'delete_content' | 'ban_user';
 
 interface AdminStats {
   totalUsers: number;
@@ -49,6 +51,19 @@ interface AdminLog {
   adminName: string;
 }
 
+interface AdminReport {
+  id: number;
+  reporterId: number;
+  targetType: string;
+  targetId: number;
+  reason: string;
+  detail: string;
+  status: string;
+  createdAt: string;
+  reporterName: string;
+  reporterNick: string;
+}
+
 const AdminPanel: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -57,8 +72,10 @@ const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [feeds, setFeeds] = useState<AdminFeed[]>([]);
   const [logs, setLogs] = useState<AdminLog[]>([]);
+  const [reports, setReports] = useState<AdminReport[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [feedFilter, setFeedFilter] = useState('all');
+  const [reportFilter, setReportFilter] = useState('pending');
   const [message, setMessage] = useState('');
 
   const currentUser = getCurrentUser();
@@ -66,6 +83,10 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'reports') loadData();
+  }, [reportFilter]);
 
   const loadData = async () => {
     setLoading(true);
@@ -82,6 +103,11 @@ const AdminPanel: React.FC = () => {
       } else if (activeTab === 'logs') {
         const data = await request<{ success: boolean; logs: AdminLog[] }>(API.admin.logs);
         if (data.success) setLogs(data.logs);
+      } else if (activeTab === 'reports') {
+        const data = await request<{ reports: AdminReport[]; total: number; page: number; hasMore: boolean }>(
+          `${API.admin.reports}?status=${reportFilter}&page=1&limit=20`
+        );
+        setReports(data.reports || []);
       }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : '加载失败');
@@ -138,6 +164,26 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleReportAction = async (reportId: number, action: ReportAction) => {
+    const actionLabels: Record<ReportAction, string> = {
+      approve: '通过',
+      reject: '驳回',
+      delete_content: '删除内容',
+      ban_user: '封禁用户',
+    };
+    if (!confirm(`确定执行「${actionLabels[action]}」操作？`)) return;
+    try {
+      await request(API.admin.reportAction(reportId), {
+        method: 'POST',
+        body: JSON.stringify({ action }),
+      });
+      setMessage(`已${actionLabels[action]}`);
+      loadData();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : '操作失败');
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -148,6 +194,7 @@ const AdminPanel: React.FC = () => {
     { key: 'users', label: '用户管理', icon: '👥' },
     { key: 'feeds', label: '动态管理', icon: '📝' },
     { key: 'logs', label: '操作日志', icon: '📋' },
+    { key: 'reports', label: '举报管理', icon: '🚩' },
   ];
 
   return (
@@ -245,6 +292,15 @@ const AdminPanel: React.FC = () => {
 
               {activeTab === 'logs' && (
                 <LogsTab logs={logs} />
+              )}
+
+              {activeTab === 'reports' && (
+                <ReportsTab
+                  reports={reports}
+                  filter={reportFilter}
+                  onFilterChange={setReportFilter}
+                  onAction={handleReportAction}
+                />
               )}
             </>
           )}
@@ -474,5 +530,105 @@ const LogsTab: React.FC<{ logs: AdminLog[] }> = ({ logs }) => (
     </div>
   </div>
 );
+
+const ReportsTab: React.FC<{
+  reports: AdminReport[];
+  filter: string;
+  onFilterChange: (f: string) => void;
+  onAction: (id: number, action: ReportAction) => void;
+}> = ({ reports, filter, onFilterChange, onAction }) => {
+  const typeMap: Record<string, string> = {
+    feed: '动态',
+    comment: '评论',
+    user: '用户',
+  };
+  const statusMap: Record<string, { label: string; cls: string }> = {
+    pending: { label: '待处理', cls: 'bg-warning/15 text-warning' },
+    resolved: { label: '已处理', cls: 'bg-success/15 text-success' },
+    rejected: { label: '已驳回', cls: 'bg-bg-gray text-text-gray' },
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-text-primary">举报管理</h2>
+        <div className="flex gap-2">
+          {[
+            { key: 'pending', label: '待处理' },
+            { key: 'resolved', label: '已处理' },
+            { key: 'rejected', label: '已驳回' },
+            { key: 'all', label: '全部' },
+          ].map((f) => (
+            <button
+              key={f.key}
+              onClick={() => onFilterChange(f.key)}
+              className={`px-3 py-1.5 text-sm rounded-lg ${
+                filter === f.key ? 'bg-primary text-white' : 'bg-bg-gray text-text-gray'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-3">
+        {reports.map((report) => {
+          const statusInfo = statusMap[report.status] || { label: report.status, cls: 'bg-bg-gray text-text-gray' };
+          const canDeleteContent = report.targetType === 'feed' || report.targetType === 'comment';
+          return (
+            <div key={report.id} className="bg-white rounded-xl p-4 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded">
+                      {typeMap[report.targetType] || report.targetType}
+                    </span>
+                    <span className="text-sm font-medium text-text-primary">举报原因：{report.reason}</span>
+                    <span className={`px-2 py-0.5 text-xs rounded ${statusInfo.cls}`}>
+                      {statusInfo.label}
+                    </span>
+                    <span className="text-xs text-text-gray">{report.createdAt}</span>
+                  </div>
+                  {report.detail && (
+                    <p className="text-sm text-text-secondary mb-2 break-words">{report.detail}</p>
+                  )}
+                  <div className="flex items-center gap-3 text-xs text-text-gray">
+                    <span>举报人：{report.reporterNick || report.reporterName || `用户 #${report.reporterId}`}</span>
+                    <span>目标 ID：#{report.targetId}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2 ml-4 flex-shrink-0">
+                  {canDeleteContent && (
+                    <button
+                      onClick={() => onAction(report.id, 'delete_content')}
+                      className="px-3 py-1 text-xs bg-warning/10 text-warning rounded hover:bg-warning/20"
+                    >
+                      删除内容
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onAction(report.id, 'ban_user')}
+                    className="px-3 py-1 text-xs bg-warning/10 text-warning rounded hover:bg-warning/20"
+                  >
+                    封禁用户
+                  </button>
+                  <button
+                    onClick={() => onAction(report.id, 'reject')}
+                    className="px-3 py-1 text-xs bg-bg-gray text-text-gray rounded"
+                  >
+                    驳回
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {reports.length === 0 && (
+          <div className="py-12 text-center text-text-gray">暂无举报</div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default AdminPanel;
